@@ -1,0 +1,37 @@
+services:
+  app:
+    build:
+      context: .
+      target: development
+      args:
+        USER_ID: $UID
+        GROUP_ID: "${GID:-$GROUPS}"
+    ports:
+      - "${DOCKER_HTTP_PORT:-8080}:8080"
+    volumes:
+      - .:/var/www/html
+
+  db:
+    profiles:
+      - data
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: "${DB_DATABASE:-postgres}"
+      POSTGRES_USER: "${DB_USERNAME:-postgres}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-pass}"
+    volumes:
+      - db:/var/lib/postgresql/data
+    restart: unless-stopped
+
+
+  cache:
+    profiles:
+      - data
+    image: redis:alpine
+    volumes:
+      - cache:/data
+    restart: unless-stopped
+
+volumes:
+  db:
+  cache:
