@@ -1,6 +1,6 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "labtemp/labtemp",
+    "name": "matheusb-comp/sentinel",
     "type": "project",
     "description": "Multi-tenant time series API with threshold alarms.",
     "keywords": ["laravel", "framework"],

@@ -18,7 +18,6 @@ jobs:
       postgres:
         image: postgres:18-alpine
         env:
-          POSTGRES_DB: labtemp_test
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: pass
         ports:

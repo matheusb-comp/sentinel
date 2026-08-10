@@ -109,13 +109,13 @@ return [
             'foreign_key_constraints' => true,
         ],
 
-        // Selected by phpunit.tenancy.xml. Uses DB_TEST_DATABASE for the same
-        // reason sqlite_testing hardcodes its database.
+        // Selected by phpunit.tenancy.xml. Defaults to the main database name
+        // with a _test suffix so it follows the project without being named here.
         'pgsql_testing' => [
             'driver' => 'pgsql',
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_TEST_DATABASE', 'labtemp_test'),
+            'database' => env('DB_TEST_DATABASE') ?: (env('DB_DATABASE') ?: 'laravel').'_test',
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => env('DB_CHARSET', 'utf8'),
