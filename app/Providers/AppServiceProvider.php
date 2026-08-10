@@ -11,11 +11,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // https://laravel.com/docs/12.x/telescope#local-only-installation
-        if (
-            $this->app->environment('local') &&
-            class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)
-        ) {
+        // Telescope is a dev dependency and is excluded from package discovery,
+        // so it is only registered when running locally.
+        if ($this->app->environment('local') && class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
             $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
             $this->app->register(TelescopeServiceProvider::class);
         }

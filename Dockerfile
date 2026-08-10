@@ -1,40 +1,77 @@
-############################################
-# Base Image
-############################################
-ARG DOCKER_IMAGE_TAG=8.4-fpm-nginx-alpine
-FROM serversideup/php:$DOCKER_IMAGE_TAG AS base
+ARG PHP_VERSION="8.5"
 
+#
+#
+#
+FROM serversideup/php:${PHP_VERSION}-frankenphp AS base
+LABEL maintainer="matheusb-comp"
 
-############################################
-# Development Image
-############################################
-FROM base AS development
-
-# Switch to root so we can do root things
 USER root
 
-# Save the build arguments as a variable
+RUN set -eux; \
+  install-php-extensions bcmath gd intl pcntl sockets;
+
+USER www-data
+
+#
+#
+#
+FROM base AS dev
+
 ARG USER_ID
 ARG GROUP_ID
 
-# Use the build arguments to change the UID
-# and GID of www-data while also changing
-# the file permissions for NGINX
-RUN docker-php-serversideup-set-id www-data $USER_ID:$GROUP_ID
-    # Update the file permissions for our NGINX service to match the new UID/GID
-    # docker-php-serversideup-set-file-permissions --owner $USER_ID:$GROUP_ID --service nginx
+USER root
 
-# Drop back to our unprivileged user
+RUN set -eux; \
+  docker-php-serversideup-set-id www-data $USER_ID:$GROUP_ID; \
+  docker-php-serversideup-set-file-permissions --owner $USER_ID:$GROUP_ID;
+
+# COPY --chmod=755 .docker/entrypoint.d/* /etc/entrypoint.d/
+
 USER www-data
 
+#
+#
+#
+FROM base AS deps
 
-############################################
-# Production Image
-############################################
+COPY composer.* .
 
-# Since we're calling "base", production isn't
-# calling any of that permission stuff
-FROM base AS production
+RUN composer install \
+  --no-dev \
+  --no-scripts \
+  --no-interaction \
+  --optimize-autoloader
 
-# Copy our app files as www-data (33:33)
-COPY --chown=www-data:www-data . /var/www/html
+#
+#
+#
+FROM base AS prod
+
+ARG ENV_FILE=".env.production"
+
+ENV APP_ENV="production"
+ENV APP_DEBUG="false"
+
+COPY --chown=www-data:www-data --from=deps /var/www/html/vendor vendor
+
+COPY --chown=www-data:www-data --exclude=.docker . .
+
+# COPY --chmod=755 .docker/entrypoint.d/* /etc/entrypoint.d/
+
+RUN set -eux; \
+  if [ -e "${ENV_FILE}" ]; then \
+    cp "${ENV_FILE}" ".env"; \
+  elif [ ! -e ".env" ]; then \
+    cp ".env.example" ".env"; \
+  fi; \
+  mkdir -p storage/logs; \
+  composer dump-autoload \
+    --no-dev \
+    --optimize \
+  ; \
+  php artisan config:cache; \
+  php artisan route:cache; \
+  php artisan view:cache; \
+  php artisan optimize;

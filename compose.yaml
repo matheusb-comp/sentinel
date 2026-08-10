@@ -1,37 +1,103 @@
+# https://docs.docker.com/reference/compose-file
+# https://github.com/compose-spec/compose-spec/blob/main/spec.md
+
+x-api-env: &api-env
+  DB_DATABASE: ${DOCKER_DATABASE_NAME}
+  DB_USERNAME: ${DOCKER_DATABASE_USERNAME}
+  DB_PASSWORD: ${DOCKER_DATABASE_PASSWORD}
+  HEALTHCHECK_PATH: /up
+  AUTORUN_ENABLED: true
+  AUTORUN_STORAGE_INIT: true
+  SHOW_WELCOME_MESSAGE: false
+  AUTORUN_LARAVEL_OPTIMIZE: false
+  AUTORUN_COMPOSER_INSTALL: false
+  AUTORUN_LARAVEL_MIGRATION: false
+  AUTORUN_LARAVEL_MIGRATION_SEED: true
+  AUTORUN_LARAVEL_MIGRATION_FORCE: true
+  AUTORUN_LARAVEL_MIGRATION_MODE: default
+  AUTORUN_LARAVEL_CONFIG_CACHE: false
+  AUTORUN_LARAVEL_EVENT_CACHE: false
+  AUTORUN_LARAVEL_ROUTE_CACHE: false
+  AUTORUN_LARAVEL_VIEW_CACHE: false
+  AUTORUN_LARAVEL_STORAGE_LINK: false
+
+# Reusable configuration of the dev image (merged with <<: *dev-image)
+x-dev-image: &dev-image
+  # image: ${DOCKER_API_IMAGE_NAME:-}
+  build:
+    context: .
+    target: dev
+    args:
+      USER_ID: ${DOCKER_USER_ID:-0}
+      GROUP_ID: ${DOCKER_GROUP_ID:-0}
+  environment:
+    <<: *api-env
+  volumes:
+    - ./:/var/www/html
+  extra_hosts:
+    - host.docker.internal:host-gateway
+  restart: unless-stopped
+  stop_signal: SIGTERM
+
 services:
-  app:
-    build:
-      context: .
-      target: development
-      args:
-        USER_ID: $UID
-        GROUP_ID: "${GID:-$GROUPS}"
-    ports:
-      - "${DOCKER_HTTP_PORT:-8080}:8080"
-    volumes:
-      - .:/var/www/html
-
-  db:
-    profiles:
-      - data
-    image: postgres:17-alpine
+  #
+  api:
+    profiles: ['api']
+    <<: *dev-image
     environment:
-      POSTGRES_DB: "${DB_DATABASE:-postgres}"
-      POSTGRES_USER: "${DB_USERNAME:-postgres}"
-      POSTGRES_PASSWORD: "${DB_PASSWORD:-pass}"
-    volumes:
-      - db:/var/lib/postgresql/data
-    restart: unless-stopped
-
-
+      <<: *api-env
+      SHOW_WELCOME_MESSAGE: true
+      AUTORUN_COMPOSER_INSTALL: ${DOCKER_AUTORUN_COMPOSER_INSTALL:-true}
+      AUTORUN_LARAVEL_MIGRATION: true
+      AUTORUN_LARAVEL_STORAGE_LINK: true
+    ports:
+      - ${DOCKER_API_PORT}:8080
+      - ${DOCKER_API_PORT_HTTPS}:8443
+    depends_on:
+      database:
+        condition: service_healthy
+        required: false
+      cache:
+        condition: service_healthy
+        required: false
+  #
   cache:
-    profiles:
-      - data
-    image: redis:alpine
+    profiles: ['cache']
+    image: redis:${DOCKER_CACHE_IMAGE_TAG:-8-alpine}
+    init: true
+    ports:
+      - ${DOCKER_CACHE_PORT}:6379
     volumes:
       - cache:/data
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  #
+  database:
+    profiles: ['database']
+    image: postgres:${DOCKER_DATABASE_IMAGE_TAG:-18-alpine}
+    init: true
+    environment:
+      POSTGRES_PASSWORD: ${DOCKER_DATABASE_PASSWORD}
+      POSTGRES_DB: ${DOCKER_DATABASE_NAME}
+      POSTGRES_USER: ${DOCKER_DATABASE_USERNAME}
+    ports:
+      - ${DOCKER_DATABASE_PORT}:5432
+    volumes:
+      - database:/var/lib/postgresql
+      # - .docker/postgres/init:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  db:
   cache:
+  database:
