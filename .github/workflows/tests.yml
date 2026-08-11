@@ -14,6 +14,15 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    # Shared by every step that touches Postgres.
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: admin
+      DB_PASSWORD: pass
+      TENANCY_RLS_USERNAME: rls
+      TENANCY_RLS_PASSWORD: pass
+
     services:
       postgres:
         image: postgres:18-alpine
@@ -52,22 +61,14 @@ jobs:
       - name: Tests
         run: ./vendor/bin/pest
 
+      # Changes to the SQL format can fail here with a clear message.
       # https://v4.tenancyforlaravel.com/postgres-rls/#creating-a-user-with-rls-policies
-      - name: Create RLS Policies
+      - name: Verify RLS Policy Generation
         run: |
           php artisan migrate --force --database=pgsql_testing
           php artisan tenants:rls
         env:
           DB_CONNECTION: pgsql_testing
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DB_USERNAME: admin
-          DB_PASSWORD: pass
 
       - name: Tenancy Tests
         run: ./vendor/bin/pest -c phpunit.tenancy.xml
-        env:
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DB_USERNAME: admin
-          DB_PASSWORD: pass
