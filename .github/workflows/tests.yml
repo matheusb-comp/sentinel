@@ -52,6 +52,18 @@ jobs:
       - name: Tests
         run: ./vendor/bin/pest
 
+      # https://v4.tenancyforlaravel.com/postgres-rls/#creating-a-user-with-rls-policies
+      - name: Create RLS Policies
+        run: |
+          php artisan migrate --force --database=pgsql_testing
+          php artisan tenants:rls
+        env:
+          DB_CONNECTION: pgsql_testing
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_USERNAME: admin
+          DB_PASSWORD: pass
+
       - name: Tenancy Tests
         run: ./vendor/bin/pest -c phpunit.tenancy.xml
         env:

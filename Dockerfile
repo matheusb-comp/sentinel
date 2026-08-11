@@ -11,6 +11,11 @@ USER root
 RUN set -eux; \
   install-php-extensions bcmath gd intl pcntl sockets;
 
+RUN set -eux; \
+  apt-get update; \
+  apt-get install -y --no-install-recommends nodejs npm; \
+  rm -rf /var/lib/apt/lists/*;
+
 USER www-data
 
 #
@@ -25,7 +30,10 @@ USER root
 
 RUN set -eux; \
   docker-php-serversideup-set-id www-data $USER_ID:$GROUP_ID; \
-  docker-php-serversideup-set-file-permissions --owner $USER_ID:$GROUP_ID;
+  docker-php-serversideup-set-file-permissions --owner $USER_ID:$GROUP_ID; \
+  apt-get update; \
+  apt-get install -y --no-install-recommends git; \
+  rm -rf /var/lib/apt/lists/*;
 
 # COPY --chmod=755 .docker/entrypoint.d/* /etc/entrypoint.d/
 

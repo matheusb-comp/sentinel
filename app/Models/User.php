@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -38,4 +39,20 @@ class User extends Authenticatable
      * @var string
      */
     protected $dateFormat = 'Y-m-d H:i:s e';
+
+    /**
+     * Companies this user belongs to.
+     *
+     * Queried in central context, where the connection bypasses RLS and the
+     * TenantScope no-ops, so it returns every company of the user.
+     *
+     * @return BelongsToMany<Company, $this>
+     */
+    public function companies(): BelongsToMany
+    {
+        return $this->belongsToMany(Company::class)
+            ->using(CompanyUser::class)
+            ->withPivot(['id', 'active'])
+            ->withTimestamps();
+    }
 }

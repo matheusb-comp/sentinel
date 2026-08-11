@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "matheusb-comp/sentinel",
     "type": "project",
-    "description": "Multi-tenant time series API with threshold alarms.",
+    "description": "Monitor data and send notifications if anything goes wrong",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
@@ -41,6 +41,7 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
             "@php artisan migrate --force",
+            "@php artisan tenants:rls",
             "npm install --ignore-scripts",
             "npm run build"
         ],
