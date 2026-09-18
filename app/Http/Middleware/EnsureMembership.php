@@ -20,18 +20,30 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureMembership
 {
+    /**
+     * The request attribute the resolved membership is stored under.
+     */
+    public const ATTRIBUTE = 'membership';
+
     public function handle(Request $request, Closure $next): Response
     {
+        $tenant = tenant();
+        $user = $request->user();
+
+        // Fails closed on a route that lacks authentication or tenant identification.
+        abort_if($user === null, 401);
+        abort_if($tenant === null, 404);
+
         $membership = CompanyUser::query()
-            ->where('company_id', tenant()->getTenantKey())
-            ->where('user_id', $request->user()->id)
+            ->where('company_id', $tenant->getTenantKey())
+            ->where('user_id', $user->id)
             ->where('active', true)
             ->first();
 
         // Avoid proving the company existence by returning 404 instead of 403.
         abort_if($membership === null, 404);
 
-        app()->instance(CompanyUser::class, $membership);
+        $request->attributes->set(self::ATTRIBUTE, $membership);
 
         return $next($request);
     }

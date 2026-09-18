@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant.member' => EnsureMembership::class,
         ]);
+
+        // No login page: guests get 401 instead of a redirect.
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Avoid proving the company existence by returning 404 instead of 500.
@@ -26,6 +29,6 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->expectsJson() || $request->is('companies/*'),
         );
     })->create();

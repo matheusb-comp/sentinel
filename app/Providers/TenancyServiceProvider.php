@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Middleware\EnsureMembership;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -99,6 +102,7 @@ class TenancyServiceProvider extends ServiceProvider
         $this->mapRoutes();
 
         $this->makeTenancyMiddlewareHighestPriority();
+        $this->prioritizeTenantRouteGuards();
         $this->overrideUrlInTenantContext();
     }
 
@@ -143,7 +147,11 @@ class TenancyServiceProvider extends ServiceProvider
     protected function makeTenancyMiddlewareHighestPriority()
     {
         // PreventAccessFromUnwantedDomains has even higher priority than the identification middleware
-        $tenancyMiddleware = array_merge([Middleware\PreventAccessFromUnwantedDomains::class], config('tenancy.identification.middleware'));
+        $tenancyMiddleware = array_merge(
+            [Middleware\PreventAccessFromUnwantedDomains::class],
+            // Path identification is placed by prioritizeTenantRouteGuards().
+            array_diff(config('tenancy.identification.middleware'), [Middleware\InitializeTenancyByPath::class]),
+        );
 
         // Resolved through the contract because that is what the container binds,
         // but annotated as the concrete kernel: prependToMiddlewarePriority is
@@ -153,6 +161,25 @@ class TenancyServiceProvider extends ServiceProvider
 
         foreach (array_reverse($tenancyMiddleware) as $middleware) {
             $kernel->prependToMiddlewarePriority($middleware);
+        }
+    }
+
+    /**
+     * Tenant routes run authentication, email verification, tenant
+     * identification and membership, in that order, before route model binding.
+     *
+     * Identifying the tenant only after authentication and verification keeps
+     * guests and unverified users from telling an existing company from a
+     * missing one. Binding models only after identification keeps them scoped
+     * to the tenant.
+     */
+    protected function prioritizeTenantRouteGuards(): void
+    {
+        /** @var HttpKernel $kernel */
+        $kernel = $this->app->make(Kernel::class);
+
+        foreach ([EnsureEmailIsVerified::class, Middleware\InitializeTenancyByPath::class, EnsureMembership::class] as $middleware) {
+            $kernel->addToMiddlewarePriorityBefore(SubstituteBindings::class, $middleware);
         }
     }
 }

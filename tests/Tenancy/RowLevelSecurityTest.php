@@ -81,7 +81,7 @@ it('reads tenant tables from central context', function () {
         ->and(Company::count())->toBe(2);
 });
 
-it('uses the index instead of scanning when filtering by tenant', function () {
+it('pushes the tenant predicate into the index', function () {
     $company = app(CreateCompanyForUser::class)->handle(User::factory()->create(), 'A');
 
     tenancy()->initialize($company);
@@ -90,6 +90,7 @@ it('uses the index instead of scanning when filtering by tenant', function () {
         ->implode("\n");
     tenancy()->end();
 
-    // The policy predicate must be an Index Cond, not a Filter applied per row.
-    expect($plan)->not->toContain('Seq Scan');
+    // The policy casts the setting to bigint, leaving the column indexable.
+    expect($plan)->toContain('Index Cond:')
+        ->and($plan)->toContain('::bigint');
 });

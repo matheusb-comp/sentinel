@@ -4,7 +4,6 @@ namespace App\Actions;
 
 use App\Models\Company;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Creates a company and makes the given user its first member.
@@ -16,7 +15,8 @@ class CreateCompanyForUser
 {
     public function handle(User $user, string $name): Company
     {
-        return DB::transaction(function () use ($user, $name): Company {
+        // Company's connection, not the default: tenancy re-points database.default.
+        return Company::query()->getConnection()->transaction(function () use ($user, $name): Company {
             $company = Company::create(['name' => $name]);
 
             $company->users()->attach($user, ['active' => true]);

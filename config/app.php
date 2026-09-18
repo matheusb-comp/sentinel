@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend URL
+    |--------------------------------------------------------------------------
+    |
+    | Root of the client application. Links sent by email, such as password
+    | reset and email verification, point here. Defaults to the application URL.
+    |
+    */
+
+    'frontend_url' => env('FRONTEND_URL') ?: env('APP_URL', 'http://localhost'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

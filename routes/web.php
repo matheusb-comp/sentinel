@@ -1,6 +1,7 @@
 <?php
 
-use App\Models\CompanyUser;
+use App\Http\Middleware\EnsureMembership;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByPath;
 
@@ -8,17 +9,20 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Order matters: the tenant is identified from the path first, and only then
-// is the authenticated user authorized against it.
-Route::middleware(['auth', InitializeTenancyByPath::class, 'tenant.member'])
+// Redirect target of EnsureEmailIsVerified for non-JSON requests.
+Route::get('/email/verify', function () {
+    return response()->json(['message' => 'Your email address is not verified.'], 403);
+})->middleware('auth')->name('verification.notice');
+
+// Execution order comes from middleware priority in TenancyServiceProvider.
+Route::middleware(['auth', 'verified', InitializeTenancyByPath::class, 'tenant.member'])
     ->prefix('companies/{company}')
     ->group(function () {
-        // Exercises the middleware chain for this cycle. It goes away once
-        // there is real CRUD to serve.
-        Route::get('/ping', function () {
+        // Placeholder endpoint for the tenant middleware chain.
+        Route::get('/ping', function (Request $request) {
             return response()->json([
                 'company' => tenant()->slug,
-                'membership' => app(CompanyUser::class)->id,
+                'membership' => $request->attributes->get(EnsureMembership::ATTRIBUTE)->id,
             ]);
         });
     });
