@@ -14,6 +14,7 @@
 /.zed
 /auth.json
 /docs/superpowers
+/docs/architecture
 /node_modules
 /public/build
 /public/fonts-manifest.dev.json
