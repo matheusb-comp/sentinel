@@ -34,8 +34,7 @@ class EnsureMembership
         abort_if($user === null, 401);
         abort_if($tenant === null, 404);
 
-        $membership = CompanyUser::query()
-            ->where('company_id', $tenant->getTenantKey())
+        $membership = CompanyUser::where('company_id', $tenant->getTenantKey())
             ->where('user_id', $user->id)
             ->where('active', true)
             ->first();

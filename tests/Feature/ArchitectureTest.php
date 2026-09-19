@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Company;
+use App\Models\Concerns\HasPublicUuid;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
 it('declares every model as either central or tenant scoped', function () {
@@ -42,9 +44,33 @@ it('has no services directory', function () {
     expect(is_dir(app_path('Services')))->toBeFalse();
 });
 
-it('keeps the numeric tenant key out of serialized companies', function () {
-    $company = Company::factory()->create();
+it('gives every model a public uuid', function () {
+    $models = collect(File::files(app_path('Models')))
+        ->map(fn ($file) => 'App\\Models\\'.$file->getFilenameWithoutExtension());
 
-    expect($company->toArray())->not->toHaveKey('id')
-        ->and($company->getRouteKeyName())->toBe('slug');
+    expect($models)->not->toBeEmpty();
+
+    foreach ($models as $model) {
+        expect(in_array(HasPublicUuid::class, class_uses_recursive($model), true))
+            ->toBeTrue("{$model} must use HasPublicUuid");
+    }
+});
+
+it('hides every numeric key column from serialization', function () {
+    $models = collect(File::files(app_path('Models')))
+        ->map(fn ($file) => 'App\\Models\\'.$file->getFilenameWithoutExtension());
+
+    expect($models)->not->toBeEmpty();
+
+    foreach ($models as $model) {
+        $instance = new $model;
+
+        $keys = collect(Schema::getColumnListing($instance->getTable()))
+            ->filter(fn (string $column): bool => $column === 'id' || str_ends_with($column, '_id'));
+
+        foreach ($keys as $key) {
+            expect(in_array($key, $instance->getHidden(), true))
+                ->toBeTrue("{$model} must hide {$key}");
+        }
+    }
 });

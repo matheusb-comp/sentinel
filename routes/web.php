@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureMembership;
+use App\Http\Middleware\ResolveCompanyByUuid;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByPath;
@@ -15,14 +16,14 @@ Route::get('/email/verify', function () {
 })->middleware('auth')->name('verification.notice');
 
 // Execution order comes from middleware priority in TenancyServiceProvider.
-Route::middleware(['auth', 'verified', InitializeTenancyByPath::class, 'tenant.member'])
+Route::middleware(['auth', 'verified', ResolveCompanyByUuid::class, InitializeTenancyByPath::class, 'tenant.member'])
     ->prefix('companies/{company}')
     ->group(function () {
         // Placeholder endpoint for the tenant middleware chain.
         Route::get('/ping', function (Request $request) {
             return response()->json([
                 'company' => tenant()->slug,
-                'membership' => $request->attributes->get(EnsureMembership::ATTRIBUTE)->id,
+                'membership_uuid' => $request->attributes->get(EnsureMembership::ATTRIBUTE)->uuid,
             ]);
         });
     });

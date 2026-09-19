@@ -5,6 +5,7 @@ use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 it('creates an rls policy for every tenant table', function () {
     $policies = DB::table('pg_policies')
@@ -57,6 +58,7 @@ it('rejects an insert carrying another company key', function () {
     tenancy()->initialize($companyA);
 
     $insert = fn () => DB::table('company_user')->insert([
+        'uuid' => (string) Str::uuid7(),
         'company_id' => $companyB->id,
         'user_id' => $outsider->id,
         'active' => true,
@@ -64,7 +66,7 @@ it('rejects an insert carrying another company key', function () {
         'updated_at' => now(),
     ]);
 
-    expect($insert)->toThrow(QueryException::class);
+    expect($insert)->toThrow(QueryException::class, 'violates row-level security policy');
 
     tenancy()->end();
 });

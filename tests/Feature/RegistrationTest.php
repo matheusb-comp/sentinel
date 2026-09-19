@@ -19,8 +19,7 @@ it('creates a user, a company and an active membership', function () {
     $user = User::where('email', 'matheus@example.com')->firstOrFail();
     $company = Company::where('name', 'Acme')->firstOrFail();
 
-    $membership = CompanyUser::query()
-        ->where('company_id', $company->id)
+    $membership = CompanyUser::where('company_id', $company->id)
         ->where('user_id', $user->id)
         ->first();
 

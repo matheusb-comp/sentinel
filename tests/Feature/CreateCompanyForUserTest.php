@@ -14,8 +14,7 @@ it('creates a company and an active membership for the user', function () {
     expect($company->name)->toBe('Acme')
         ->and($user->companies()->pluck('companies.id')->all())->toBe([$company->id]);
 
-    $membership = CompanyUser::query()
-        ->where('company_id', $company->id)
+    $membership = CompanyUser::where('company_id', $company->id)
         ->where('user_id', $user->id)
         ->first();
 
@@ -68,14 +67,14 @@ it('scopes memberships to the current company once tenancy is initialized', func
     $companyA = $action->handle($userA, 'A');
     $action->handle($userB, 'B');
 
-    expect(CompanyUser::query()->count())->toBe(2);
+    expect(CompanyUser::count())->toBe(2);
 
     // TenantScope stays registered: the configured manager is TableRLSManager
     // and no model implements RLSModel, so both layers filter.
     tenancy()->initialize($companyA);
-    expect(CompanyUser::query()->count())->toBe(1)
-        ->and(CompanyUser::query()->first()->company_id)->toBe($companyA->id);
+    expect(CompanyUser::count())->toBe(1)
+        ->and(CompanyUser::first()->company_id)->toBe($companyA->id);
     tenancy()->end();
 
-    expect(CompanyUser::query()->count())->toBe(2);
+    expect(CompanyUser::count())->toBe(2);
 });

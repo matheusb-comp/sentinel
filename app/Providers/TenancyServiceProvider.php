@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureMembership;
+use App\Http\Middleware\ResolveCompanyByUuid;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
@@ -14,9 +15,12 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Stancl\Tenancy\Actions\CloneRoutesAsTenant;
 use Stancl\Tenancy\Bootstrappers\RootUrlBootstrapper;
-use Stancl\Tenancy\Events;
-use Stancl\Tenancy\Listeners;
-use Stancl\Tenancy\Middleware;
+use Stancl\Tenancy\Events\TenancyEnded;
+use Stancl\Tenancy\Events\TenancyInitialized;
+use Stancl\Tenancy\Listeners\BootstrapTenancy;
+use Stancl\Tenancy\Listeners\RevertToCentralContext;
+use Stancl\Tenancy\Middleware\InitializeTenancyByPath;
+use Stancl\Tenancy\Middleware\PreventAccessFromUnwantedDomains;
 
 /**
  * Tenancy for Laravel.
@@ -51,12 +55,12 @@ class TenancyServiceProvider extends ServiceProvider
     public function events()
     {
         return [
-            Events\TenancyInitialized::class => [
-                Listeners\BootstrapTenancy::class,
+            TenancyInitialized::class => [
+                BootstrapTenancy::class,
             ],
 
-            Events\TenancyEnded::class => [
-                Listeners\RevertToCentralContext::class,
+            TenancyEnded::class => [
+                RevertToCentralContext::class,
             ],
         ];
     }
@@ -148,9 +152,9 @@ class TenancyServiceProvider extends ServiceProvider
     {
         // PreventAccessFromUnwantedDomains has even higher priority than the identification middleware
         $tenancyMiddleware = array_merge(
-            [Middleware\PreventAccessFromUnwantedDomains::class],
+            [PreventAccessFromUnwantedDomains::class],
             // Path identification is placed by prioritizeTenantRouteGuards().
-            array_diff(config('tenancy.identification.middleware'), [Middleware\InitializeTenancyByPath::class]),
+            array_diff(config('tenancy.identification.middleware'), [InitializeTenancyByPath::class]),
         );
 
         // Resolved through the contract because that is what the container binds,
@@ -165,8 +169,9 @@ class TenancyServiceProvider extends ServiceProvider
     }
 
     /**
-     * Tenant routes run authentication, email verification, tenant
-     * identification and membership, in that order, before route model binding.
+     * Tenant routes run authentication, email verification, company uuid
+     * resolution, tenant identification and membership, in that order, before
+     * route model binding.
      *
      * Identifying the tenant only after authentication and verification keeps
      * guests and unverified users from telling an existing company from a
@@ -178,7 +183,14 @@ class TenancyServiceProvider extends ServiceProvider
         /** @var HttpKernel $kernel */
         $kernel = $this->app->make(Kernel::class);
 
-        foreach ([EnsureEmailIsVerified::class, Middleware\InitializeTenancyByPath::class, EnsureMembership::class] as $middleware) {
+        $guards = [
+            EnsureEmailIsVerified::class,
+            ResolveCompanyByUuid::class,
+            InitializeTenancyByPath::class,
+            EnsureMembership::class,
+        ];
+
+        foreach ($guards as $middleware) {
             $kernel->addToMiddlewarePriorityBefore(SubstituteBindings::class, $middleware);
         }
     }

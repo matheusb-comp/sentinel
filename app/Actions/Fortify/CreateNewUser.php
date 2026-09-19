@@ -43,7 +43,7 @@ class CreateNewUser implements CreatesNewUsers
         ])->validate();
 
         // Company's connection, not the default: tenancy re-points database.default.
-        return Company::query()->getConnection()->transaction(function () use ($input): User {
+        return (new Company)->getConnection()->transaction(function () use ($input): User {
             $user = User::create([
                 'name' => $input['name'],
                 'email' => $input['email'],

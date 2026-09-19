@@ -23,10 +23,12 @@ No manual setup is needed for the database itself: `MigrateCommand::createMissin
 
 Its `beforeEach` in `tests/Pest.php` runs `php artisan tenants:rls`, because `migrate:fresh` drops policies along with the tables.
 
-## tests/Tenancy proves the isolation mechanism, not each feature
-That suite is small and fixed: policies exist, they compare the tenant key as bigint rather than casting the column, they scope reads, they reject a write carrying another company's key, and the central connection still sees everything. It does not grow with the product.
+## tests/Tenancy proves isolation once, not per feature
+`RowLevelSecurityTest` proves the isolation mechanism: policies exist, they compare the tenant key as bigint rather than casting the column, they scope reads, they reject a write carrying another company's key, and the central connection still sees everything.
 
 A new feature does not get its own isolation test. `TenantScope` stays registered — the configured manager is `BigintTableRLSManager`, a `TableRLSManager` subclass, and no model implements `RLSModel` — so the SQLite suite already exercises application-level scoping. RLS covers structurally what that cannot reach: query builder calls and raw SQL inside tenancy.
+
+The suite also holds tests that only prove something on Postgres, whatever the feature: the connection switch made by `PostgresRLSBootstrapper`, requests served on the RLS connection, a `uuid` column rejecting malformed input. A test belongs there when it would pass on SQLite even with the defect it guards against.
 
 ## The SQLite suite strips the RLS bootstrapper
 `tests/Pest.php` filters `PostgresRLSBootstrapper` out of `tenancy.bootstrappers` for `tests/Feature`. It issues `SET my.current_tenant = '...'`, which is not valid SQLite. Tenant scoping there comes from `TenantScope` alone, which is real coverage — it is the same layer that runs in production alongside RLS.

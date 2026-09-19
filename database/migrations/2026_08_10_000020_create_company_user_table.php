@@ -13,6 +13,8 @@ return new class extends Migration
             // tenant records reference the membership rather than the User.
             $table->id();
 
+            $table->uuid('uuid')->unique();
+
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
 
             // Restricted so that deleting a user cannot erase the memberships

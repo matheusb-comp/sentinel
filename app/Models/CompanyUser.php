@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicUuid;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
@@ -12,9 +14,10 @@ use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
  * central identity used for logging in, this is who acts once a company has
  * been entered.
  */
+#[Hidden(['id', 'company_id', 'user_id'])]
 class CompanyUser extends Pivot
 {
-    use BelongsToTenant;
+    use BelongsToTenant, HasPublicUuid;
 
     protected $table = 'company_user';
 

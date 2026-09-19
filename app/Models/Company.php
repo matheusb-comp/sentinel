@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicUuid;
 use Database\Factories\CompanyFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -18,6 +19,9 @@ use Stancl\Tenancy\Database\Contracts\TenantWithDatabase;
  * The tenant. Uses real columns instead of the package's `data` JSON column,
  * so VirtualColumn is deliberately absent.
  *
+ * GeneratesIds is absent as well: the tenant key is an auto-increment bigint,
+ * and the methods of that trait collide with the ones HasUuids brings in.
+ *
  * HasDatabase is required even though this application is single-database:
  * the tenants:rls command calls $tenant->database() to reuse the package's
  * Postgres user creation logic. No per-tenant database is ever created.
@@ -28,13 +32,13 @@ class Company extends Model implements Tenant, TenantWithDatabase
 {
     /** @use HasFactory<CompanyFactory> */
     use Concerns\CentralConnection,
-        Concerns\GeneratesIds,
         Concerns\HasDatabase,
         Concerns\HasInternalKeys,
         Concerns\InitializationHelpers,
         Concerns\InvalidatesResolverCache,
         Concerns\TenantRun,
         HasFactory,
+        HasPublicUuid,
         SoftDeletes;
 
     private const SLUG_LENGTH = 12;
@@ -59,7 +63,7 @@ class Company extends Model implements Tenant, TenantWithDatabase
     }
 
     /**
-     * Bind routes by slug. The numeric key must never reach a URL.
+     * Bind and generate routes by slug instead of the uuid.
      */
     public function getRouteKeyName(): string
     {
@@ -73,7 +77,7 @@ class Company extends Model implements Tenant, TenantWithDatabase
     {
         return $this->belongsToMany(User::class)
             ->using(CompanyUser::class)
-            ->withPivot(['id', 'active'])
+            ->withPivot(['id', 'uuid', 'active'])
             ->withTimestamps();
     }
 

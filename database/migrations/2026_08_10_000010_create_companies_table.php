@@ -15,9 +15,11 @@ return new class extends Migration
             // text, which is what keeps the index usable.
             $table->id();
 
-            // The only public identifier. The numeric id never appears in a
-            // URL or in a serialized response, so it is not enumerable.
-            $table->string('slug', 32)->unique();
+            // Stable public reference, for integrations.
+            $table->uuid('uuid')->unique();
+
+            // Identifies the company in URLs.
+            $table->string('slug')->unique();
 
             $table->string('name');
             $table->timestampsTz();

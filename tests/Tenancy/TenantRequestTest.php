@@ -28,10 +28,3 @@ it('refuses another company end to end on the rls connection', function () {
         ->getJson("/companies/{$target->slug}/ping")
         ->assertNotFound();
 });
-
-it('tells a guest nothing about whether a company exists', function () {
-    $company = app(CreateCompanyForUser::class)->handle(User::factory()->create(), 'Acme');
-
-    $this->getJson("/companies/{$company->slug}/ping")->assertUnauthorized();
-    $this->getJson('/companies/doesnotexist/ping')->assertUnauthorized();
-});

@@ -2,6 +2,7 @@
 
 use App\Actions\CreateCompanyForUser;
 use App\Http\Middleware\EnsureMembership;
+use App\Http\Middleware\ResolveCompanyByUuid;
 use App\Models\User;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -16,6 +17,7 @@ it('runs the tenant route guards in order, before route model binding', function
     $guards = [
         Authenticate::class,
         EnsureEmailIsVerified::class,
+        ResolveCompanyByUuid::class,
         InitializeTenancyByPath::class,
         EnsureMembership::class,
         SubstituteBindings::class,
@@ -50,12 +52,12 @@ it('initializes tenancy for the company in the path', function () {
 it('shares the membership as the current actor', function () {
     $user = User::factory()->create();
     $company = app(CreateCompanyForUser::class)->handle($user, 'Acme');
-    $membershipId = $company->users()->first()->pivot->id;
+    $membershipUuid = $company->users()->first()->pivot->uuid;
 
     $this->actingAs($user)
         ->getJson("/companies/{$company->slug}/ping")
         ->assertOk()
-        ->assertJsonPath('membership', $membershipId);
+        ->assertExactJson(['company' => $company->slug, 'membership_uuid' => $membershipUuid]);
 });
 
 it('returns 404 when the user is not a member of the company', function () {
