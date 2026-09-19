@@ -99,3 +99,24 @@ it('does not let an unverified user reach their own company', function () {
 
     $this->getJson("/companies/{$company->slug}/ping")->assertForbidden();
 });
+
+it('lets a user reach their company after following the verification link', function () {
+    Notification::fake();
+
+    $this->postJson('/register', [
+        'name' => 'Matheus',
+        'email' => 'matheus@example.com',
+        'password' => 'password-123',
+        'password_confirmation' => 'password-123',
+        'company_name' => 'Acme',
+    ])->assertSuccessful();
+
+    $user = User::sole();
+    $company = $user->companies()->sole();
+    $link = Notification::sent($user, VerifyEmail::class)->sole()->toMail($user)->actionUrl;
+
+    $this->getJson(parse_url($link, PHP_URL_PATH).'?'.parse_url($link, PHP_URL_QUERY))
+        ->assertNoContent();
+
+    $this->getJson("/companies/{$company->slug}/ping")->assertOk();
+});
