@@ -46,9 +46,14 @@ throws rather than falling back, so this cannot regress quietly.
 
 ## Run `php artisan tenants:rls` after every migration
 
-Always after `migrate`, never before: the policies are derived from the schema,
-so the tables have to exist. This applies to deployment too, even when `migrate`
-fails.
+Always after a successful `migrate`, never before: the policies are derived from
+the schema, so the tables have to exist. A failed `migrate` stops the deploy
+instead of running this over a half-applied schema.
+
+In Docker, `.docker/entrypoint.d/60-tenancy-rls.sh` runs it in every container
+that migrates (`AUTORUN_LARAVEL_MIGRATION`), right after the image's migration
+step. The entrypoint runs with `set -e`, so a failed `migrate` stops the
+container before the script is reached.
 
 Forgetting it fails loudly rather than leaking. `grantPermissions()` grants
 table by table over whatever exists at the time, so a table added by a later

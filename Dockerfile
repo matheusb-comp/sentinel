@@ -35,7 +35,7 @@ RUN set -eux; \
   apt-get install -y --no-install-recommends git; \
   rm -rf /var/lib/apt/lists/*;
 
-# COPY --chmod=755 .docker/entrypoint.d/* /etc/entrypoint.d/
+COPY --chmod=755 .docker/entrypoint.d/* /etc/entrypoint.d/
 
 USER www-data
 
@@ -66,7 +66,7 @@ COPY --chown=www-data:www-data --from=deps /var/www/html/vendor vendor
 
 COPY --chown=www-data:www-data --exclude=.docker . .
 
-# COPY --chmod=755 .docker/entrypoint.d/* /etc/entrypoint.d/
+COPY --chmod=755 .docker/entrypoint.d/* /etc/entrypoint.d/
 
 RUN set -eux; \
   if [ -e "${ENV_FILE}" ]; then \
