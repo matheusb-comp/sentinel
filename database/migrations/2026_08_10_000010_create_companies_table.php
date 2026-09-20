@@ -14,8 +14,6 @@ return new class extends Migration
             // session variable to bigint rather than casting this column to
             // text, which is what keeps the index usable.
             $table->id();
-
-            // Stable public reference, for integrations.
             $table->uuid('uuid')->unique();
 
             // Identifies the company in URLs.

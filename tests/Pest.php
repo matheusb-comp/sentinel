@@ -2,9 +2,11 @@
 
 use App\Http\Middleware\ResolveCompanyByUuid;
 use App\Models\CompanyUser;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Bootstrappers\PostgresRLSBootstrapper;
 use Stancl\Tenancy\Middleware\InitializeTenancyByPath;
@@ -60,5 +62,17 @@ function probePartitions(): array
         ->where('parent.relname', 'probe_readings')
         ->orderBy('child.relname')
         ->pluck('child.relname')
+        ->all();
+}
+
+/**
+ * Every model class in app/Models.
+ *
+ * @return list<class-string<Model>>
+ */
+function modelClasses(): array
+{
+    return collect(File::files(app_path('Models')))
+        ->map(fn ($file) => 'App\\Models\\'.$file->getFilenameWithoutExtension())
         ->all();
 }

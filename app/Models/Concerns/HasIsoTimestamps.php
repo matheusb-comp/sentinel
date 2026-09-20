@@ -11,13 +11,21 @@ namespace App\Models\Concerns;
  * and Eloquent compares those strings to decide whether an attribute changed —
  * so the name marks an untouched timestamp as dirty.
  *
- * `$dateFormat` only reaches the columns a model reports in `getDates()`, which
- * by default is just `created_at` and `updated_at`. A model with other date
- * columns lists them there.
+ * `getDates()` is where a model declares its date columns, and by default that
+ * is just `created_at` and `updated_at`. A model with others lists them there
+ * and spreads `isoCasts()` into its own `casts()`, so each column is named once.
  */
 trait HasIsoTimestamps
 {
     public const DATE_CAST = 'datetime:c';
 
     protected $dateFormat = 'c';
+
+    /**
+     * @return array<string, string>
+     */
+    protected function isoCasts(): array
+    {
+        return array_fill_keys($this->getDates(), self::DATE_CAST);
+    }
 }

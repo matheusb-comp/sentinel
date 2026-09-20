@@ -28,9 +28,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function casts(): array
     {
         return [
-            'created_at' => self::DATE_CAST,
-            'updated_at' => self::DATE_CAST,
-            'email_verified_at' => self::DATE_CAST,
+            ...$this->isoCasts(),
             'password' => 'hashed',
         ];
     }

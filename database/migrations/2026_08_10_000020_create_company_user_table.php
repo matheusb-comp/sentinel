@@ -12,7 +12,6 @@ return new class extends Migration
             // Its own primary key, not a composite one: role assignments and
             // tenant records reference the membership rather than the User.
             $table->id();
-
             $table->uuid('uuid')->unique();
 
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();

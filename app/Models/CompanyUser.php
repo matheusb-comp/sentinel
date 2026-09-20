@@ -30,9 +30,8 @@ class CompanyUser extends Pivot
     protected function casts(): array
     {
         return [
+            ...$this->isoCasts(),
             'active' => 'boolean',
-            'created_at' => self::DATE_CAST,
-            'updated_at' => self::DATE_CAST,
         ];
     }
 }

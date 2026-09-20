@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Stancl\Tenancy\Contracts\Tenant;
@@ -76,6 +77,14 @@ class Company extends Model implements Tenant, TenantWithDatabase
             ->withTimestamps();
     }
 
+    /**
+     * @return HasMany<Device, $this>
+     */
+    public function devices(): HasMany
+    {
+        return $this->hasMany(Device::class);
+    }
+
     protected static function booted(): void
     {
         static::creating(function (self $company): void {
@@ -101,11 +110,7 @@ class Company extends Model implements Tenant, TenantWithDatabase
      */
     protected function casts(): array
     {
-        return [
-            'created_at' => self::DATE_CAST,
-            'updated_at' => self::DATE_CAST,
-            'deleted_at' => self::DATE_CAST,
-        ];
+        return $this->isoCasts();
     }
 
     /**
