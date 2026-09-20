@@ -62,6 +62,25 @@ services:
         condition: service_healthy
         required: false
   #
+  schedule:
+    profiles: ['schedule']
+    <<: *dev-image
+    init: true
+    command: ['php', 'artisan', 'schedule:work', '--whisper']
+    # Long enough for a scheduled command to finish instead of being killed.
+    stop_grace_period: 30s
+    depends_on:
+      # The api container is the one that migrates.
+      api:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ['CMD', 'healthcheck-schedule']
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  #
   cache:
     profiles: ['cache']
     image: redis:${DOCKER_CACHE_IMAGE_TAG:-8-alpine}
