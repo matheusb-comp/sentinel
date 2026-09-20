@@ -14,7 +14,7 @@ New tests go in `tests/Feature` (or `tests/Unit`), which run on the in-memory `s
 composer test:postgres
 ```
 
-It is kept out of `composer test` so the everyday command stays fast and free of infrastructure prerequisites. RLS work will need a dedicated Postgres role with specific grants — something Laravel cannot provision for itself. CI runs both as separate steps, so nothing merges without the Postgres suite passing.
+It is kept out of `composer test` so the everyday command stays fast and free of infrastructure prerequisites. RLS work will need a dedicated Postgres role with specific grants — something Laravel cannot provision for itself. CI has a step for each, but both workflows are triggered by hand: nothing about them gates a merge.
 
 No manual setup is needed for the database itself: `MigrateCommand::createMissingMySqlOrPgsqlDatabase()` creates it automatically when `migrate` runs, which both `RefreshDatabase` and `DatabaseTruncation` trigger. This requires the connecting role to have CREATEDB and access to the `postgres` database; the compose `admin` user is the Postgres superuser, so it does. CI relies on this too — the workflow's Postgres service does not declare the database.
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasIsoTimestamps;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Relations\Pivot;
@@ -17,18 +18,11 @@ use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 #[Hidden(['id', 'company_id', 'user_id'])]
 class CompanyUser extends Pivot
 {
-    use BelongsToTenant, HasPublicUuid;
+    use BelongsToTenant, HasIsoTimestamps, HasPublicUuid;
 
     protected $table = 'company_user';
 
     public $incrementing = true;
-
-    /**
-     * The storage format of the model's date columns.
-     *
-     * @var string
-     */
-    protected $dateFormat = 'Y-m-d H:i:s e';
 
     /**
      * @return array<string, string>
@@ -37,8 +31,8 @@ class CompanyUser extends Pivot
     {
         return [
             'active' => 'boolean',
-            'created_at' => 'datetime:c',
-            'updated_at' => 'datetime:c',
+            'created_at' => self::DATE_CAST,
+            'updated_at' => self::DATE_CAST,
         ];
     }
 }

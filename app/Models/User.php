@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasIsoTimestamps;
 use App\Models\Concerns\HasPublicUuid;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -17,7 +18,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasPublicUuid, Notifiable;
+    use HasFactory, HasIsoTimestamps, HasPublicUuid, Notifiable;
 
     /**
      * Get the attributes that should be cast.
@@ -27,19 +28,20 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function casts(): array
     {
         return [
-            'created_at' => 'datetime:c',
-            'updated_at' => 'datetime:c',
-            'email_verified_at' => 'datetime:c',
+            'created_at' => self::DATE_CAST,
+            'updated_at' => self::DATE_CAST,
+            'email_verified_at' => self::DATE_CAST,
             'password' => 'hashed',
         ];
     }
 
     /**
-     * The storage format of the model's date columns.
-     *
-     * @var string
+     * @return list<string>
      */
-    protected $dateFormat = 'Y-m-d H:i:s e';
+    public function getDates(): array
+    {
+        return [...parent::getDates(), 'email_verified_at'];
+    }
 
     /**
      * Companies this user belongs to.

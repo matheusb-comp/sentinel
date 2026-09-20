@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureMembership;
+use App\Http\Middleware\RemoveNullBytes;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Before TrimStrings, so credentials it exempts are not rewritten here,
+        // and before ConvertEmptyStringsToNull, so a value left empty converts.
+        $middleware->prepend(RemoveNullBytes::class);
+
         $middleware->alias([
             'tenant.member' => EnsureMembership::class,
         ]);

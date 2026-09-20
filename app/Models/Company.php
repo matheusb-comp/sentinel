@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasIsoTimestamps;
 use App\Models\Concerns\HasPublicUuid;
 use Database\Factories\CompanyFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -38,19 +39,13 @@ class Company extends Model implements Tenant, TenantWithDatabase
         Concerns\InvalidatesResolverCache,
         Concerns\TenantRun,
         HasFactory,
+        HasIsoTimestamps,
         HasPublicUuid,
         SoftDeletes;
 
     private const SLUG_LENGTH = 12;
 
     protected $table = 'companies';
-
-    /**
-     * The storage format of the model's date columns.
-     *
-     * @var string
-     */
-    protected $dateFormat = 'Y-m-d H:i:s e';
 
     public function getTenantKeyName(): string
     {
@@ -107,9 +102,17 @@ class Company extends Model implements Tenant, TenantWithDatabase
     protected function casts(): array
     {
         return [
-            'created_at' => 'datetime:c',
-            'updated_at' => 'datetime:c',
-            'deleted_at' => 'datetime:c',
+            'created_at' => self::DATE_CAST,
+            'updated_at' => self::DATE_CAST,
+            'deleted_at' => self::DATE_CAST,
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getDates(): array
+    {
+        return [...parent::getDates(), $this->getDeletedAtColumn()];
     }
 }
