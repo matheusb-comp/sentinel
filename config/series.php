@@ -2,6 +2,14 @@
 
 return [
     /*
+     * How long a maintenance statement waits for its lock before giving up.
+     *
+     * Creating or dropping a partition takes an ACCESS EXCLUSIVE lock on the
+     * parent table, so giving up keeps ingestion running.
+     */
+    'lock_timeout' => '3s',
+
+    /*
      * Time range partitioned tables, keyed by table name.
      *
      *   partition  width of each partition: 1 hour, 1 day, 1 week or 1 month

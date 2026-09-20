@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Database\Partitioning\PartitionMaintainer;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,6 +14,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(PartitionMaintainer::class, fn (Application $app) => new PartitionMaintainer(
+            $app->make(ConnectionInterface::class),
+            config('series.lock_timeout'),
+        ));
+
         // Telescope is a dev dependency and is excluded from package discovery,
         // so it is only registered when running locally.
         if ($this->app->environment('local') && class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {

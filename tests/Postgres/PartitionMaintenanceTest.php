@@ -118,6 +118,39 @@ it('keeps every partition when no retention is configured', function () {
         ->and(probePartitions())->toContain('probe_readings_p20260101');
 });
 
+it('leaves the session lock timeout untouched', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-20 13:00:00', 'UTC'));
+    DB::select("SELECT set_config('lock_timeout', '7s', false)");
+
+    app(PartitionMaintainer::class)->maintain('probe_readings', PartitionInterval::Day, premake: 0);
+
+    expect(DB::selectOne("SELECT current_setting('lock_timeout') AS value")->value)->toBe('7s');
+});
+
+it('gives up instead of queueing behind a lock it cannot get', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-20 13:00:00', 'UTC'));
+    config(['series.lock_timeout' => '100ms']);
+    config(['database.connections.pgsql_probe' => config('database.connections.pgsql_testing')]);
+
+    $blocker = DB::connection('pgsql_probe');
+    $blocker->beginTransaction();
+    $blocker->statement('LOCK TABLE probe_readings IN ACCESS EXCLUSIVE MODE');
+
+    // Without a lock timeout the maintainer would wait for the blocker forever.
+    DB::select("SELECT set_config('statement_timeout', '5s', false)");
+
+    try {
+        $maintain = fn () => app(PartitionMaintainer::class)
+            ->maintain('probe_readings', PartitionInterval::Day, premake: 0);
+
+        expect($maintain)->toThrow(QueryException::class, 'lock timeout');
+    } finally {
+        DB::select("SELECT set_config('statement_timeout', '0', false)");
+        $blocker->rollBack();
+        DB::purge('pgsql_probe');
+    }
+});
+
 it('reports coverage only up to the first gap', function () {
     $maintainer = app(PartitionMaintainer::class);
 

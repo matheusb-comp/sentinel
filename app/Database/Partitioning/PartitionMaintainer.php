@@ -19,7 +19,10 @@ use InvalidArgumentException;
  */
 class PartitionMaintainer
 {
-    public function __construct(private readonly ConnectionInterface $connection) {}
+    public function __construct(
+        private readonly ConnectionInterface $connection,
+        private readonly string $lockTimeout,
+    ) {}
 
     public function maintain(
         string $table,
@@ -51,7 +54,7 @@ class PartitionMaintainer
             $name = $this->name($table, $interval, $start);
 
             if (! array_key_exists($name, $existing)) {
-                $this->connection->statement(sprintf(
+                $this->runWithLockTimeout(sprintf(
                     "CREATE TABLE %s PARTITION OF %s FOR VALUES FROM ('%s') TO ('%s')",
                     $this->quote($name),
                     $this->quote($table),
@@ -83,7 +86,7 @@ class PartitionMaintainer
                 continue;
             }
 
-            $this->connection->statement(sprintf('DROP TABLE %s', $this->quote($name)));
+            $this->runWithLockTimeout(sprintf('DROP TABLE %s', $this->quote($name)));
 
             $dropped[] = $name;
         }
@@ -145,19 +148,38 @@ class PartitionMaintainer
         return $starts;
     }
 
+    /**
+     * Runs one partition statement under a lock timeout.
+     *
+     * Creating or dropping a partition takes an ACCESS EXCLUSIVE lock on the
+     * parent, and every read and write arriving while it waits queues behind it.
+     * Failing is the lesser outcome: the partitions already in hand cover the
+     * next few days, so the following run recovers.
+     *
+     * The timeout is transaction scoped, so Postgres restores it whether the
+     * statement succeeds or not.
+     */
+    private function runWithLockTimeout(string $statement): void
+    {
+        $this->connection->transaction(function () use ($statement): void {
+            $this->connection->select("SELECT set_config('lock_timeout', ?, true)", [$this->lockTimeout]);
+            $this->connection->statement($statement);
+        });
+    }
+
     private function name(string $table, PartitionInterval $interval, CarbonImmutable $start): string
     {
         return $table.'_p'.$interval->suffix($start);
     }
 
     /**
-     * Partition bounds cannot be bound as parameters, so the DDL is built as
-     * text. Only identifiers Postgres would accept unquoted get through.
+     * Partition bounds cannot be bound as parameters, so the statement is built
+     * as text. Only identifiers Postgres would accept unquoted get through.
      */
     private function quote(string $identifier): string
     {
         if (preg_match('/^[a-z_][a-z0-9_]{0,62}$/', $identifier) !== 1) {
-            throw new InvalidArgumentException("Refusing to build DDL for the identifier [{$identifier}].");
+            throw new InvalidArgumentException("Refusing to build a statement for the identifier [{$identifier}].");
         }
 
         return '"'.$identifier.'"';
