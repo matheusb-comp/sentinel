@@ -109,7 +109,7 @@ return [
             'foreign_key_constraints' => true,
         ],
 
-        // Selected by phpunit.tenancy.xml. Defaults to the main database name
+        // Selected by phpunit.postgres.xml. Defaults to the main database name
         // with a _test suffix so it follows the project without being named here.
         'pgsql_testing' => [
             'driver' => 'pgsql',

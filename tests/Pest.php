@@ -4,6 +4,7 @@ use App\Http\Middleware\ResolveCompanyByUuid;
 use App\Models\CompanyUser;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Bootstrappers\PostgresRLSBootstrapper;
 use Stancl\Tenancy\Middleware\InitializeTenancyByPath;
@@ -34,7 +35,7 @@ pest()->extend(TestCase::class)
         // RLS policies must be reset after `migrate:fresh` on DatabaseTruncation.
         $this->artisan('tenants:rls');
     })
-    ->in('Tenancy');
+    ->in('Postgres');
 
 /**
  * Registers a tenant route that binds a membership by its uuid, with the same
@@ -44,4 +45,20 @@ function registerMembershipRoute(): void
 {
     Route::middleware(['web', 'auth', 'verified', ResolveCompanyByUuid::class, InitializeTenancyByPath::class, 'tenant.member'])
         ->get('/companies/{company}/members/{member}', fn (CompanyUser $member) => ['member_uuid' => $member->uuid]);
+}
+
+/**
+ * The partitions of the probe_readings fixture table, by name, in order.
+ *
+ * @return list<string>
+ */
+function probePartitions(): array
+{
+    return DB::table('pg_inherits')
+        ->join('pg_class as parent', 'parent.oid', '=', 'pg_inherits.inhparent')
+        ->join('pg_class as child', 'child.oid', '=', 'pg_inherits.inhrelid')
+        ->where('parent.relname', 'probe_readings')
+        ->orderBy('child.relname')
+        ->pluck('child.relname')
+        ->all();
 }

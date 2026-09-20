@@ -72,5 +72,5 @@ jobs:
         env:
           DB_CONNECTION: pgsql_testing
 
-      - name: Tenancy Tests
-        run: ./vendor/bin/pest -c phpunit.tenancy.xml
+      - name: Postgres Tests
+        run: ./vendor/bin/pest -c phpunit.postgres.xml
