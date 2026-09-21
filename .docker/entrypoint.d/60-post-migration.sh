@@ -1,5 +1,5 @@
 #!/bin/sh
-script_name="tenancy-rls"
+script_name="post-migration"
 
 # Global configurations
 : "${DISABLE_DEFAULT_CONFIG:=false}"
@@ -26,11 +26,22 @@ if [ "$AUTORUN_LARAVEL_MIGRATION" != "true" ]; then
     exit 0
 fi
 
-# The entrypoint runs with set -e, so a failed migrate in laravel-automations
-# has already stopped the container before this script is reached.
-echo "🚀 $script_name: php artisan tenants:rls"
+artisan() {
+    echo "🚀 $script_name: php artisan $*"
 
-if ! php "$APP_BASE_DIR/artisan" tenants:rls; then
-    echo "❌ $script_name: tenants:rls failed." >&2
-    exit 1
-fi
+    if ! php "$APP_BASE_DIR/artisan" "$@"; then
+        echo "❌ $script_name: $1 failed." >&2
+        exit 1
+    fi
+}
+
+# Everything below is derived from the migrated schema. --pending takes a value,
+# which becomes the exit code when a migration is pending; without one it
+# succeeds either way.
+artisan migrate:status --pending=1
+
+artisan series:setup
+artisan series:maintain-partitions
+
+# Last: the policies are derived from the tables that exist, partitions included.
+artisan tenants:rls

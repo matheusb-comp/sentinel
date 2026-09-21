@@ -7,9 +7,9 @@ use App\Database\Partitioning\PartitionMaintainer;
 use Illuminate\Console\Command;
 use Throwable;
 
-class MaintainPartitions extends Command
+class MaintainSeriesPartitions extends Command
 {
-    protected $signature = 'partitions:maintain';
+    protected $signature = 'series:maintain-partitions';
 
     protected $description = 'Create upcoming time range partitions and drop expired ones';
 

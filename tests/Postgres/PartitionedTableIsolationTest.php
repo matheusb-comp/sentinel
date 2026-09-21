@@ -71,17 +71,25 @@ it('generates policies for a partitioned table without failing', function () {
 
 it('scopes a partitioned table to the tenant when queried through the parent', function () {
     [$companyA] = seedProbeReadings();
+    $sensorOfA = DB::table('probe_sensors')->where('company_id', $companyA->id)->value('id');
 
     tenancy()->initialize($companyA);
-    $visible = DB::table('probe_readings')
-        ->join('probe_sensors', 'probe_sensors.id', '=', 'probe_readings.sensor_id')
-        ->pluck('probe_sensors.company_id')
-        ->unique()
-        ->values()
-        ->all();
+    $visible = DB::table('probe_readings')->pluck('sensor_id')->all();
     tenancy()->end();
 
-    expect($visible)->toBe([$companyA->id]);
+    expect($visible)->toBe([$sensorOfA]);
+});
+
+it('scopes direct access to a partition that existed when the policies were generated', function () {
+    [$companyA] = seedProbeReadings();
+    $sensorOfA = DB::table('probe_sensors')->where('company_id', $companyA->id)->value('id');
+    $partition = probePartitions()[0];
+
+    tenancy()->initialize($companyA);
+    $visible = DB::table($partition)->pluck('sensor_id')->all();
+    tenancy()->end();
+
+    expect($visible)->toBe([$sensorOfA]);
 });
 
 it('denies direct access to a partition created after the policies were generated', function () {

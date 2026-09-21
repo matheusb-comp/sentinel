@@ -1,7 +1,13 @@
 <?php
 
+use App\Actions\CreateCompanyForUser;
+use App\Database\Partitioning\PartitionInterval;
+use App\Database\Partitioning\PartitionMaintainer;
 use App\Http\Middleware\ResolveCompanyByUuid;
 use App\Models\CompanyUser;
+use App\Models\Device;
+use App\Models\Sensor;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,7 +40,10 @@ pest()->extend(TestCase::class)
 pest()->extend(TestCase::class)
     ->use(DatabaseTruncation::class)
     ->beforeEach(function () {
-        // RLS policies must be reset after `migrate:fresh` on DatabaseTruncation.
+        // migrate:fresh leaves the series tables out and drops the policies,
+        // which are derived from the tables that exist, hence this order.
+        // Partitions come from seedSeriesSensor(), in the tests that write.
+        $this->artisan('series:setup');
         $this->artisan('tenants:rls');
     })
     ->in('Postgres');
@@ -75,4 +84,24 @@ function modelClasses(): array
     return collect(File::files(app_path('Models')))
         ->map(fn ($file) => 'App\\Models\\'.$file->getFilenameWithoutExtension())
         ->all();
+}
+
+/**
+ * A sensor of a company of its own, with the current partition of every series
+ * table already created.
+ */
+function seedSeriesSensor(): Sensor
+{
+    $company = app(CreateCompanyForUser::class)->handle(User::factory()->create(), 'A');
+    $device = Device::factory()->create(['company_id' => $company->id]);
+
+    foreach (config('series.tables') as $table => $settings) {
+        app(PartitionMaintainer::class)->maintain(
+            $table,
+            PartitionInterval::from($settings['partition']),
+            premake: 0,
+        );
+    }
+
+    return Sensor::factory()->create(['device_id' => $device->id]);
 }

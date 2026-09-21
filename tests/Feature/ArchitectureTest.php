@@ -1,9 +1,11 @@
 <?php
 
+use App\Database\Partitioning\PartitionInterval;
 use App\Models\Company;
 use App\Models\Concerns\HasIsoTimestamps;
 use App\Models\Concerns\HasPublicUuid;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -132,5 +134,14 @@ it('hides every numeric key column from serialization', function () {
             expect(in_array($key, $instance->getHidden(), true))
                 ->toBeTrue("{$model} must hide {$key}");
         }
+    }
+});
+
+it('names every series table so the statements can use it unquoted', function () {
+    foreach (config('series.tables') as $table => $settings) {
+        $partition = $table.'_p'.PartitionInterval::from($settings['partition'])->suffix(CarbonImmutable::now('UTC'));
+
+        expect($table)->toMatch('/^[a-z_][a-z0-9_]*$/', "{$table} must be lowercase, without a dot")
+            ->and(strlen($partition))->toBeLessThanOrEqual(63, "{$partition} is longer than Postgres keeps");
     }
 });

@@ -4,8 +4,7 @@ namespace App\Database\Partitioning;
 
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterval;
-use Illuminate\Database\ConnectionInterface;
-use InvalidArgumentException;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Creates and drops time range partitions for the tables in config/series.php.
@@ -19,11 +18,6 @@ use InvalidArgumentException;
  */
 class PartitionMaintainer
 {
-    public function __construct(
-        private readonly ConnectionInterface $connection,
-        private readonly string $lockTimeout,
-    ) {}
-
     public function maintain(
         string $table,
         PartitionInterval $interval,
@@ -54,10 +48,12 @@ class PartitionMaintainer
             $name = $this->name($table, $interval, $start);
 
             if (! array_key_exists($name, $existing)) {
+                // Partition bounds cannot be bound as parameters, so they are
+                // formatted into the statement.
                 $this->runWithLockTimeout(sprintf(
                     "CREATE TABLE %s PARTITION OF %s FOR VALUES FROM ('%s') TO ('%s')",
-                    $this->quote($name),
-                    $this->quote($table),
+                    $name,
+                    $table,
                     $start->format('Y-m-d H:i:sP'),
                     $interval->next($start)->format('Y-m-d H:i:sP'),
                 ));
@@ -86,7 +82,7 @@ class PartitionMaintainer
                 continue;
             }
 
-            $this->runWithLockTimeout(sprintf('DROP TABLE %s', $this->quote($name)));
+            $this->runWithLockTimeout(sprintf('DROP TABLE %s', $name));
 
             $dropped[] = $name;
         }
@@ -124,7 +120,7 @@ class PartitionMaintainer
     {
         $prefix = $table.'_p';
 
-        $rows = $this->connection->select(<<<'SQL'
+        $rows = DB::select(<<<'SQL'
             SELECT child.relname AS name
             FROM pg_inherits
             JOIN pg_class child ON child.oid = pg_inherits.inhrelid
@@ -161,27 +157,14 @@ class PartitionMaintainer
      */
     private function runWithLockTimeout(string $statement): void
     {
-        $this->connection->transaction(function () use ($statement): void {
-            $this->connection->select("SELECT set_config('lock_timeout', ?, true)", [$this->lockTimeout]);
-            $this->connection->statement($statement);
+        DB::transaction(function () use ($statement): void {
+            DB::select("SELECT set_config('lock_timeout', ?, true)", [config('series.lock_timeout')]);
+            DB::statement($statement);
         });
     }
 
     private function name(string $table, PartitionInterval $interval, CarbonImmutable $start): string
     {
         return $table.'_p'.$interval->suffix($start);
-    }
-
-    /**
-     * Partition bounds cannot be bound as parameters, so the statement is built
-     * as text. Only identifiers Postgres would accept unquoted get through.
-     */
-    private function quote(string $identifier): string
-    {
-        if (preg_match('/^[a-z_][a-z0-9_]{0,62}$/', $identifier) !== 1) {
-            throw new InvalidArgumentException("Refusing to build a statement for the identifier [{$identifier}].");
-        }
-
-        return '"'.$identifier.'"';
     }
 }

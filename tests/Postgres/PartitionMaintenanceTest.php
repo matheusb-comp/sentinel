@@ -181,7 +181,7 @@ it('keeps maintaining the other tables when one of them fails', function () {
         'probe_readings' => ['partition' => '1 day', 'premake' => 0, 'retention' => null],
     ]]);
 
-    $this->artisan('partitions:maintain')->assertFailed();
+    $this->artisan('series:maintain-partitions')->assertFailed();
 
     expect(probePartitions())->toBe(['probe_readings_p20260920']);
 });
@@ -192,7 +192,7 @@ it('maintains every table listed in the series config', function () {
         'probe_readings' => ['partition' => '1 day', 'premake' => 1, 'retention' => null],
     ]]);
 
-    $this->artisan('partitions:maintain')->assertSuccessful();
+    $this->artisan('series:maintain-partitions')->assertSuccessful();
 
     expect(probePartitions())->toBe([
         'probe_readings_p20260920',

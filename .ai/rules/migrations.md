@@ -44,16 +44,24 @@ Storage for the same schema at 2M rows, table plus index: bigint 113 MB, uuid
 tenant-scoped query. If the custom policy manager ever stops being applied, it
 throws rather than falling back, so this cannot regress quietly.
 
-## Run `php artisan tenants:rls` after every migration
+## After every migration: series tables, their partitions, then `tenants:rls`
 
-Always after a successful `migrate`, never before: the policies are derived from
-the schema, so the tables have to exist. A failed `migrate` stops the deploy
-instead of running this over a half-applied schema.
+Always after a successful `migrate`, never before, and in this order:
 
-In Docker, `.docker/entrypoint.d/60-tenancy-rls.sh` runs it in every container
-that migrates (`AUTORUN_LARAVEL_MIGRATION`), right after the image's migration
-step. The entrypoint runs with `set -e`, so a failed `migrate` stops the
-container before the script is reached.
+1. `migrate:status --pending=1` — refuse to go on while a migration is pending.
+   The option takes a value, which is the exit code when something is pending;
+   `--pending` alone succeeds either way.
+2. `series:setup` — the series tables are declared in `config/series.php`, not in
+   a migration.
+3. `series:maintain-partitions` — a partitioned table accepts no row until a
+   partition covers it.
+4. `tenants:rls` — last, because the policies are derived from the tables that
+   exist. A partition that exists by then gets a policy of its own; one created
+   later by the daily schedule gets no grant and cannot be read directly.
+
+In Docker, `.docker/entrypoint.d/60-post-migration.sh` runs these in every
+container that migrates (`AUTORUN_LARAVEL_MIGRATION`), right after the image's
+migration step, and stops at the first step that fails.
 
 Forgetting it fails loudly rather than leaking. `grantPermissions()` grants
 table by table over whatever exists at the time, so a table added by a later
