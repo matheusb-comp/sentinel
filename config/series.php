@@ -13,13 +13,18 @@ return [
      * Time range partitioned tables, keyed by table name: `series:setup` creates
      * the missing ones and `series:maintain-partitions` keeps their partitions.
      *
-     *   bucket     rollup tables only: the width each reading is folded into, any
-     *              Postgres interval. Without it, a table holds the raw readings.
+     *   bucket     rollup tables only: the width each reading is folded into.
+     *              Without it, a table holds the raw readings. It has to divide
+     *              a day evenly, or an hour for hourly partitions: otherwise a
+     *              bucket can start in the partition before the one holding its
+     *              readings, which may not exist.
      *   partition  width of each partition: 1 hour, 1 day, 1 week or 1 month
      *   premake    how many partitions to keep created ahead of the current one;
      *              maintenance runs daily, so this has to reach well past a day
-     *   retention  how long to keep a partition after its range ends;
-     *              null keeps every partition
+     *   retention  how long to keep a partition after its range ends; null
+     *              keeps every partition. It has to stay above
+     *              `ingestion.backfill`, the window maintenance also creates
+     *              partitions back to.
      *
      * A table name is lowercase and without a dot, since the statements use it
      * unquoted, and short enough for its partition names to fit in 63

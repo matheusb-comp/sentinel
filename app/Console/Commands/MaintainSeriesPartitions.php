@@ -11,7 +11,7 @@ class MaintainSeriesPartitions extends Command
 {
     protected $signature = 'series:maintain-partitions';
 
-    protected $description = 'Create upcoming time range partitions and drop expired ones';
+    protected $description = 'Create the time range partitions and drop expired ones';
 
     public function handle(PartitionMaintainer $maintainer): int
     {
@@ -24,6 +24,7 @@ class MaintainSeriesPartitions extends Command
                     PartitionInterval::from($settings['partition']),
                     $settings['premake'],
                     $settings['retention'],
+                    config('ingestion.backfill'),
                 );
             } catch (Throwable $e) {
                 // One unusable table must not leave the others without partitions.

@@ -34,6 +34,19 @@ it('creates the current partition and the premake window ahead of it', function 
     ]);
 });
 
+it('creates the partitions back to the start of the backfill window', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-20 13:00:00', 'UTC'));
+
+    app(PartitionMaintainer::class)->maintain('probe_readings', PartitionInterval::Day, premake: 1, backfill: '2 days');
+
+    expect(probePartitions())->toBe([
+        'probe_readings_p20260918',
+        'probe_readings_p20260919',
+        'probe_readings_p20260920',
+        'probe_readings_p20260921',
+    ]);
+});
+
 it('creates nothing on a second run', function () {
     $this->travelTo(CarbonImmutable::parse('2026-09-20 13:00:00', 'UTC'));
     $maintainer = app(PartitionMaintainer::class);
@@ -176,10 +189,13 @@ it('reports no coverage when the current range has no partition', function () {
 
 it('keeps maintaining the other tables when one of them fails', function () {
     $this->travelTo(CarbonImmutable::parse('2026-09-20 13:00:00', 'UTC'));
-    config(['series.tables' => [
-        'probe_missing' => ['partition' => '1 day', 'premake' => 0, 'retention' => null],
-        'probe_readings' => ['partition' => '1 day', 'premake' => 0, 'retention' => null],
-    ]]);
+    config([
+        'ingestion.backfill' => null,
+        'series.tables' => [
+            'probe_missing' => ['partition' => '1 day', 'premake' => 0, 'retention' => null],
+            'probe_readings' => ['partition' => '1 day', 'premake' => 0, 'retention' => null],
+        ],
+    ]);
 
     $this->artisan('series:maintain-partitions')->assertFailed();
 
@@ -188,9 +204,12 @@ it('keeps maintaining the other tables when one of them fails', function () {
 
 it('maintains every table listed in the series config', function () {
     $this->travelTo(CarbonImmutable::parse('2026-09-20 13:00:00', 'UTC'));
-    config(['series.tables' => [
-        'probe_readings' => ['partition' => '1 day', 'premake' => 1, 'retention' => null],
-    ]]);
+    config([
+        'ingestion.backfill' => null,
+        'series.tables' => [
+            'probe_readings' => ['partition' => '1 day', 'premake' => 1, 'retention' => null],
+        ],
+    ]);
 
     $this->artisan('series:maintain-partitions')->assertSuccessful();
 
@@ -198,4 +217,18 @@ it('maintains every table listed in the series config', function () {
         'probe_readings_p20260920',
         'probe_readings_p20260921',
     ]);
+});
+
+it('creates the partitions back to the ingestion backfill window', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-20 13:00:00', 'UTC'));
+    config([
+        'ingestion.backfill' => '1 day',
+        'series.tables' => [
+            'probe_readings' => ['partition' => '1 day', 'premake' => 0, 'retention' => null],
+        ],
+    ]);
+
+    $this->artisan('series:maintain-partitions')->assertSuccessful();
+
+    expect(probePartitions())->toBe(['probe_readings_p20260919', 'probe_readings_p20260920']);
 });

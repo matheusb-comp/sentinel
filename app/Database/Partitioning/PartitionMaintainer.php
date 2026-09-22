@@ -23,28 +23,40 @@ class PartitionMaintainer
         PartitionInterval $interval,
         int $premake,
         ?string $retention = null,
+        ?string $backfill = null,
     ): PartitionReport {
         $now = CarbonImmutable::now('UTC');
+        $from = $backfill === null ? $now : $now->sub(CarbonInterval::make($backfill));
 
         return new PartitionReport(
-            created: $this->createUpcoming($table, $interval, $premake, $now),
+            created: $this->createMissing($table, $interval, $premake, $from, $now),
             dropped: $retention === null ? [] : $this->dropExpired($table, $interval, $retention, $now),
             coveredUntil: $this->coveredUntil($table, $interval, $now),
         );
     }
 
-    /** @return list<string> */
-    private function createUpcoming(
+    /**
+     * From the partition that holds `$from` to the one `$premake` ranges past
+     * the current one.
+     *
+     * @return list<string>
+     */
+    private function createMissing(
         string $table,
         PartitionInterval $interval,
         int $premake,
+        CarbonImmutable $from,
         CarbonImmutable $now,
     ): array {
         $existing = $this->existingStarts($table, $interval);
         $created = [];
-        $start = $interval->start($now);
+        $end = $interval->start($now);
 
         for ($i = 0; $i <= $premake; $i++) {
+            $end = $interval->next($end);
+        }
+
+        for ($start = $interval->start($from); $start->lessThan($end); $start = $interval->next($start)) {
             $name = $this->name($table, $interval, $start);
 
             if (! array_key_exists($name, $existing)) {
@@ -60,8 +72,6 @@ class PartitionMaintainer
 
                 $created[] = $name;
             }
-
-            $start = $interval->next($start);
         }
 
         return $created;
