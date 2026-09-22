@@ -132,3 +132,12 @@ function registerDevice(array $sensorKeys = ['temp']): array
         array_map(fn (string $key): array => ['key' => $key, 'description' => null], $sensorKeys),
     );
 }
+
+/**
+ * Issues the user a token for the company, returning the plain text a client
+ * sends as its bearer token.
+ */
+function issueUserToken(User $user, Company $company): string
+{
+    return $company->run(fn (): string => $user->createToken('test')->plainTextToken);
+}

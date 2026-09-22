@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasIsoTimestamps;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
@@ -33,5 +34,13 @@ class CompanyUser extends Pivot
             ...$this->isoCasts(),
             'active' => 'boolean',
         ];
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

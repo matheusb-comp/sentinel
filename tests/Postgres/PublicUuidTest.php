@@ -11,8 +11,11 @@ use Illuminate\Support\Facades\Validator;
  * missing format check turn a lookup into a 500.
  */
 it('returns 404 for a company path that is neither a slug nor a uuid', function () {
-    $this->actingAs(User::factory()->create())
-        ->getJson('/companies/not-a-uuid/ping')
+    $user = User::factory()->create();
+    $company = app(CreateCompanyForUser::class)->handle($user, 'Acme');
+
+    $this->withToken(issueUserToken($user, $company))
+        ->getJson('/api/v1/companies/not-a-uuid')
         ->assertNotFound();
 });
 

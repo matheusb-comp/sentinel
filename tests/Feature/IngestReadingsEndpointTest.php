@@ -1,11 +1,11 @@
 <?php
 
-use App\Http\Requests\Api\V1\IngestReadingsRequest;
+use App\Http\Requests\Ingest\V1\IngestReadingsRequest;
 
 it('refuses a batch that is not a list of one to the maximum number of readings', function (array $body) {
     ['token' => $token] = registerDevice();
 
-    $this->withToken($token)->postJson('/api/v1/readings', $body)
+    $this->withToken($token)->postJson('/in/v1/data', $body)
         ->assertUnprocessable()
         ->assertJsonValidationErrors('readings');
 })->with([
@@ -18,14 +18,14 @@ it('refuses a batch that is not a list of one to the maximum number of readings'
 it('refuses a body sent without a JSON content type', function () {
     ['token' => $token] = registerDevice();
 
-    $this->withToken($token)->post('/api/v1/readings', ['readings' => [['key' => 'temp']]])
+    $this->withToken($token)->post('/in/v1/data', ['readings' => [['key' => 'temp']]])
         ->assertStatus(415);
 });
 
 it('refuses a body that is not valid JSON', function () {
     ['token' => $token] = registerDevice();
 
-    $this->call('POST', '/api/v1/readings', server: $this->transformHeadersToServerVars([
+    $this->call('POST', '/in/v1/data', server: $this->transformHeadersToServerVars([
         'Authorization' => "Bearer {$token}",
         'Content-Type' => 'application/json',
     ]), content: '{"readings": [')->assertStatus(400);

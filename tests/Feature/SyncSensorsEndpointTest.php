@@ -1,12 +1,12 @@
 <?php
 
-use App\Http\Requests\Api\V1\SyncSensorsRequest;
+use App\Http\Requests\Ingest\V1\SyncSensorsRequest;
 use Illuminate\Support\Str;
 
 it('reconciles the sensors with the list the device declares', function () {
     ['device' => $device, 'token' => $token] = registerDevice(['temp', 'hum']);
 
-    $this->withToken($token)->putJson('/api/v1/sensors', ['sensors' => [
+    $this->withToken($token)->putJson('/in/v1/sync', ['sensors' => [
         ['key' => 'temp', 'description' => 'DS18B20'],
         ['key' => 'co2'],
     ]])->assertNoContent();
@@ -19,7 +19,7 @@ it('reconciles the sensors with the list the device declares', function () {
 it('tells apart keys that are equal only as numbers', function () {
     ['device' => $device, 'token' => $token] = registerDevice();
 
-    $this->withToken($token)->putJson('/api/v1/sensors', ['sensors' => [['key' => '1'], ['key' => '01']]])
+    $this->withToken($token)->putJson('/in/v1/sync', ['sensors' => [['key' => '1'], ['key' => '01']]])
         ->assertNoContent();
 
     expect($device->sensors()->whereNull('archived_at')->orderBy('key')->pluck('key')->all())->toBe(['01', '1']);
@@ -28,7 +28,7 @@ it('tells apart keys that are equal only as numbers', function () {
 it('refuses a declaration that does not reconcile', function (array $body, string $field) {
     ['device' => $device, 'token' => $token] = registerDevice();
 
-    $this->withToken($token)->putJson('/api/v1/sensors', $body)
+    $this->withToken($token)->putJson('/in/v1/sync', $body)
         ->assertUnprocessable()
         ->assertJsonValidationErrors($field);
 
@@ -50,15 +50,26 @@ it('refuses a declaration that does not reconcile', function (array $body, strin
 it('refuses a body sent without a JSON content type', function () {
     ['token' => $token] = registerDevice();
 
-    $this->withToken($token)->put('/api/v1/sensors', ['sensors' => [['key' => 'temp']]])
+    $this->withToken($token)->put('/in/v1/sync', ['sensors' => [['key' => 'temp']]])
         ->assertStatus(415);
 });
 
 it('refuses a body that is not valid JSON', function () {
     ['token' => $token] = registerDevice();
 
-    $this->call('PUT', '/api/v1/sensors', server: $this->transformHeadersToServerVars([
+    $this->call('PUT', '/in/v1/sync', server: $this->transformHeadersToServerVars([
         'Authorization' => "Bearer {$token}",
         'Content-Type' => 'application/json',
     ]), content: '{"sensors": [')->assertStatus(400);
+});
+
+it('answers a validation error as JSON to a request that does not ask for JSON', function () {
+    ['token' => $token] = registerDevice();
+
+    $this->call('PUT', '/in/v1/sync', server: $this->transformHeadersToServerVars([
+        'Authorization' => "Bearer {$token}",
+        'Content-Type' => 'application/json',
+    ]), content: '{"sensors": []}')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('sensors');
 });

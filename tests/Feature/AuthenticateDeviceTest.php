@@ -1,18 +1,39 @@
 <?php
 
 use App\Http\Middleware\AuthenticateDevice;
+use App\Http\Middleware\RequireJsonBody;
 use App\Models\PersonalAccessToken;
 use App\Models\Sensor;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 
 function syncWith(?string $token): TestResponse
 {
     $request = $token === null ? test() : test()->withToken($token);
 
-    return $request->putJson('/api/v1/sensors', ['sensors' => [['key' => 'temp']]]);
+    return $request->putJson('/in/v1/sync', ['sensors' => [['key' => 'temp']]]);
 }
+
+it('runs the device route guards in order, before route model binding', function () {
+    $route = Route::getRoutes()->match(Request::create('/in/v1/sync', 'PUT'));
+
+    $guards = [
+        AuthenticateDevice::class,
+        RequireJsonBody::class,
+        SubstituteBindings::class,
+    ];
+
+    $middleware = array_map(
+        fn (string $middleware): string => Str::before($middleware, ':'),
+        Route::gatherRouteMiddleware($route),
+    );
+
+    expect(array_values(array_intersect($middleware, $guards)))->toBe($guards);
+});
 
 it('lets a device in with the token it was issued', function () {
     ['token' => $token] = registerDevice();
@@ -37,8 +58,6 @@ it('binds route models only once the tenancy of the device is initialized', func
     Route::middleware(['api', AuthenticateDevice::class])
         ->get('/api/probe-sensor/{sensor}', fn (Sensor $sensor) => ['uuid' => $sensor->uuid]);
 
-    // First: the request for the own sensor leaves its tenancy initialized, which
-    // would hide the foreign sensor even if binding ran before authentication.
     $this->withToken($token)->getJson("/api/probe-sensor/{$foreign}")->assertNotFound();
     $this->withToken($token)->getJson("/api/probe-sensor/{$own}")->assertOk();
 });
@@ -48,7 +67,7 @@ it('refuses a request without a token', function () {
 });
 
 it('refuses a wrong token before looking at the body', function () {
-    $this->withToken('not-a-token')->put('/api/v1/sensors', ['sensors' => [['key' => 'temp']]])
+    $this->withToken('not-a-token')->put('/in/v1/sync', ['sensors' => [['key' => 'temp']]])
         ->assertUnauthorized();
 });
 

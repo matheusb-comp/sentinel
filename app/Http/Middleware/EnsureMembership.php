@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\CompanyUser;
+use App\Models\PersonalAccessToken;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,6 +34,12 @@ class EnsureMembership
         // Fails closed on a route that lacks authentication or tenant identification.
         abort_if($user === null, 401);
         abort_if($tenant === null, 404);
+
+        // The token used to authenticate has to belong to the Company. A session
+        // carries a TransientToken, which belongs to none.
+        $token = $user->currentAccessToken();
+        $isPat = $token instanceof PersonalAccessToken;
+        abort_if($isPat && $token->company_id !== $tenant->getTenantKey(), 404);
 
         $membership = CompanyUser::where('company_id', $tenant->getTenantKey())
             ->where('user_id', $user->id)

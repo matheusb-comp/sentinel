@@ -14,7 +14,9 @@ use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
  * other model.
  *
  * The owner is polymorphic, with no key the tenancy can follow, so the token
- * carries its owner's company_id, copied when the token is created.
+ * carries a company_id: the current tenant's, filled by BelongsToTenant, or its
+ * owner's when it is created outside tenancy. A user is associated to multiple
+ * companies, so a user token can only be created inside tenancy.
  */
 #[Hidden(['id', 'company_id', 'token', 'tokenable_type', 'tokenable_id'])]
 class PersonalAccessToken extends SanctumPersonalAccessToken

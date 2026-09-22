@@ -95,9 +95,12 @@ it('does not let an unverified user reach their own company', function () {
         'company_name' => 'Acme',
     ])->assertSuccessful();
 
-    $company = User::firstOrFail()->companies()->firstOrFail();
+    $user = User::firstOrFail();
+    $company = $user->companies()->firstOrFail();
 
-    $this->getJson("/companies/{$company->slug}/ping")->assertForbidden();
+    $this->withToken(issueUserToken($user, $company))
+        ->getJson("/api/v1/companies/{$company->slug}")
+        ->assertForbidden();
 });
 
 it('lets a user reach their company after following the verification link', function () {
@@ -118,5 +121,7 @@ it('lets a user reach their company after following the verification link', func
     $this->getJson(parse_url($link, PHP_URL_PATH).'?'.parse_url($link, PHP_URL_QUERY))
         ->assertNoContent();
 
-    $this->getJson("/companies/{$company->slug}/ping")->assertOk();
+    $this->withToken(issueUserToken($user, $company))
+        ->getJson("/api/v1/companies/{$company->slug}")
+        ->assertOk();
 });

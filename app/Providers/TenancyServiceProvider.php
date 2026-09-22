@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Http\Middleware\AuthenticateDevice;
 use App\Http\Middleware\EnsureMembership;
+use App\Http\Middleware\RequireJsonBody;
 use App\Http\Middleware\ResolveCompanyByUuid;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Contracts\Http\Kernel;
@@ -172,13 +173,18 @@ class TenancyServiceProvider extends ServiceProvider
     /**
      * Tenant routes run authentication, email verification, company uuid
      * resolution, tenant identification and membership, in that order, before
-     * route model binding. AuthenticateDevice, which identifies the tenant on
-     * device routes, runs before it as well.
+     * route model binding. Device routes run AuthenticateDevice, which
+     * identifies the tenant, and then RequireJsonBody, so a request with a
+     * wrong token is refused whatever its body.
      *
      * Identifying the tenant only after authentication and verification keeps
      * guests and unverified users from telling an existing company from a
      * missing one. Binding models only after identification keeps them scoped
      * to the tenant.
+     *
+     * Each middleware is placed immediately before SubstituteBindings, so this
+     * list is their order. Placing any of them from bootstrap/app.php would put
+     * it ahead of all of these, which run once the providers boot.
      */
     protected function prioritizeTenantRouteGuards(): void
     {
@@ -191,6 +197,7 @@ class TenancyServiceProvider extends ServiceProvider
             InitializeTenancyByPath::class,
             EnsureMembership::class,
             AuthenticateDevice::class,
+            RequireJsonBody::class,
         ];
 
         foreach ($guards as $middleware) {

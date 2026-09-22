@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Contracts\TenantCouldNotBeIdentifiedException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -16,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            Route::middleware('api')->prefix('in')->group(__DIR__.'/../routes/ingest.php');
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Before TrimStrings, so credentials it exempts are not rewritten here,
@@ -38,6 +42,6 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->expectsJson() || $request->is('companies/*', 'api/*'),
+            fn (Request $request) => $request->expectsJson() || $request->is('api/*', 'in/*'),
         );
     })->create();

@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers\Ingest\V1;
 
 use App\Actions\Readings\IngestReadings;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\AuthenticateDevice;
-use App\Http\Requests\Api\V1\IngestReadingsRequest;
+use App\Http\Requests\Ingest\V1\IngestReadingsRequest;
 use Illuminate\Http\JsonResponse;
 
 class IngestReadingsController extends Controller

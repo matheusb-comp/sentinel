@@ -5,7 +5,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 it('refuses a token with a key prefix that is not a bigint instead of failing on it', function (string $token) {
-    $this->withToken($token)->putJson('/api/v1/sensors', ['sensors' => [['key' => 'temp']]])
+    $this->withToken($token)->putJson('/in/v1/sync', ['sensors' => [['key' => 'temp']]])
         ->assertUnauthorized();
 })->with([
     'not a number' => ['abc|def'],

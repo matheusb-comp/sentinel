@@ -8,10 +8,10 @@ it('lets a member reach their company by uuid', function () {
     $user = User::factory()->create();
     $company = app(CreateCompanyForUser::class)->handle($user, 'Acme');
 
-    $this->actingAs($user)
-        ->getJson("/companies/{$company->uuid}/ping")
+    $this->withToken(issueUserToken($user, $company))
+        ->getJson("/api/v1/companies/{$company->uuid}")
         ->assertOk()
-        ->assertJsonPath('company', $company->slug);
+        ->assertJsonPath('data.slug', $company->slug);
 });
 
 it('returns 404 when the user is not a member of the company addressed by uuid', function () {
@@ -19,13 +19,16 @@ it('returns 404 when the user is not a member of the company addressed by uuid',
     app(CreateCompanyForUser::class)->handle($intruder, 'Intruder Co');
     $company = app(CreateCompanyForUser::class)->handle(User::factory()->create(), 'Acme');
 
-    $this->actingAs($intruder)
-        ->getJson("/companies/{$company->uuid}/ping")
+    $this->withToken(issueUserToken($intruder, $company))
+        ->getJson("/api/v1/companies/{$company->uuid}")
         ->assertNotFound();
 });
 
 it('returns 404 for an unknown company uuid', function () {
-    $this->actingAs(User::factory()->create())
-        ->getJson('/companies/'.Str::uuid7().'/ping')
+    $user = User::factory()->create();
+    $company = app(CreateCompanyForUser::class)->handle($user, 'Acme');
+
+    $this->withToken(issueUserToken($user, $company))
+        ->getJson('/api/v1/companies/'.Str::uuid7())
         ->assertNotFound();
 });

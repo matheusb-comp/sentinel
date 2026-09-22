@@ -21,7 +21,7 @@ beforeEach(function () {
  */
 function ingest(string $token, array $readings): TestResponse
 {
-    return test()->withToken($token)->postJson('/api/v1/readings', ['readings' => $readings]);
+    return test()->withToken($token)->postJson('/in/v1/data', ['readings' => $readings]);
 }
 
 it('stores the valid readings and reports the others by position', function () {
@@ -88,7 +88,7 @@ it('refuses an item for the first check it fails', function (mixed $item, string
 it('refuses a value that overflows a double', function () {
     ['token' => $token] = registerDevice(['temp']);
 
-    $this->call('POST', '/api/v1/readings', server: $this->transformHeadersToServerVars([
+    $this->call('POST', '/in/v1/data', server: $this->transformHeadersToServerVars([
         'Authorization' => "Bearer {$token}",
         'Content-Type' => 'application/json',
     ]), content: '{"readings": [{"key": "temp", "time": "2026-09-21T11:00:00Z", "value": 1e400}]}')

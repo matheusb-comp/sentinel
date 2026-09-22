@@ -33,9 +33,6 @@ class AuthenticateDevice
 
         throw_if($plainTextToken === null, AuthenticationException::class);
 
-        // Clear any existing tenancy, to prevent scopes on the token lookup.
-        tenancy()->end();
-
         $token = $this->findDeviceToken($plainTextToken);
         $company = $token?->tenant;
 
