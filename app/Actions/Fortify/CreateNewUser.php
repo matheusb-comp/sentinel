@@ -2,7 +2,7 @@
 
 namespace App\Actions\Fortify;
 
-use App\Actions\CreateCompanyForUser;
+use App\Actions\Companies\CreateCompanyForUser;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;

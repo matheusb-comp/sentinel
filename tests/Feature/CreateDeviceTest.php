@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\ArchiveDevice;
-use App\Actions\CreateDevice;
+use App\Actions\Devices\ArchiveDevice;
+use App\Actions\Devices\CreateDevice;
 use App\Models\Company;
 use App\Models\Device;
 use App\Models\PersonalAccessToken;

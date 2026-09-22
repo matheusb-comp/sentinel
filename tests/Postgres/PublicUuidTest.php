@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\CreateCompanyForUser;
+use App\Actions\Companies\CreateCompanyForUser;
 use App\Models\CompanyUser;
 use App\Models\User;
 use App\Rules\ExistsByUuid;

@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\CreateCompanyForUser;
-use App\Actions\StoreReadings;
+use App\Actions\Companies\CreateCompanyForUser;
+use App\Actions\Readings\StoreReadings;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;

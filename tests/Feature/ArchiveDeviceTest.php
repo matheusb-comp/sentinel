@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\ArchiveDevice;
-use App\Actions\CreateDevice;
+use App\Actions\Devices\ArchiveDevice;
+use App\Actions\Devices\CreateDevice;
 use App\Models\PersonalAccessToken;
 
 it('archives the device and deletes its tokens', function () {

@@ -52,8 +52,10 @@ it('declares how every model relates to the tenant', function () {
 });
 
 it('exposes a handle method on every action', function () {
-    $actions = collect(File::files(app_path('Actions')))
-        ->map(fn ($file) => 'App\\Actions\\'.$file->getFilenameWithoutExtension());
+    // Fortify's actions implement its contracts instead.
+    $actions = collect(File::allFiles(app_path('Actions')))
+        ->reject(fn ($file) => str_starts_with($file->getRelativePath(), 'Fortify'))
+        ->map(fn ($file) => 'App\\Actions\\'.str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname()));
 
     expect($actions)->not->toBeEmpty();
 

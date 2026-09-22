@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\CreateCompanyForUser;
-use App\Actions\CreateDevice;
+use App\Actions\Companies\CreateCompanyForUser;
+use App\Actions\Devices\CreateDevice;
 use App\Database\Partitioning\PartitionInterval;
 use App\Database\Partitioning\PartitionMaintainer;
 use App\Http\Middleware\ResolveCompanyByUuid;

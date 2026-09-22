@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Middleware\AuthenticateDevice;
 use App\Http\Middleware\EnsureMembership;
 use App\Http\Middleware\ResolveCompanyByUuid;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -171,7 +172,8 @@ class TenancyServiceProvider extends ServiceProvider
     /**
      * Tenant routes run authentication, email verification, company uuid
      * resolution, tenant identification and membership, in that order, before
-     * route model binding.
+     * route model binding. AuthenticateDevice, which identifies the tenant on
+     * device routes, runs before it as well.
      *
      * Identifying the tenant only after authentication and verification keeps
      * guests and unverified users from telling an existing company from a
@@ -188,6 +190,7 @@ class TenancyServiceProvider extends ServiceProvider
             ResolveCompanyByUuid::class,
             InitializeTenancyByPath::class,
             EnsureMembership::class,
+            AuthenticateDevice::class,
         ];
 
         foreach ($guards as $middleware) {

@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\CreateCompanyForUser;
-use App\Actions\SyncDeviceSensors;
+use App\Actions\Companies\CreateCompanyForUser;
+use App\Actions\Devices\SyncDeviceSensors;
 use App\Models\Device;
 use App\Models\Sensor;
 use App\Models\User;

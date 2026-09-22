@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\CreateCompanyForUser;
-use App\Actions\CreateDevice;
+use App\Actions\Companies\CreateCompanyForUser;
+use App\Actions\Devices\CreateDevice;
 use App\Models\Device;
 use App\Models\PersonalAccessToken;
 use App\Models\User;

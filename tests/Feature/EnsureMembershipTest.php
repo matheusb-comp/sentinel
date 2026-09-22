@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\CreateCompanyForUser;
+use App\Actions\Companies\CreateCompanyForUser;
 use App\Http\Middleware\EnsureMembership;
 use App\Http\Middleware\ResolveCompanyByUuid;
 use App\Models\User;

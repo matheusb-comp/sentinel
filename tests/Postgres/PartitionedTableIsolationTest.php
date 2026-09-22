@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\CreateCompanyForUser;
+use App\Actions\Companies\CreateCompanyForUser;
 use App\Database\Partitioning\PartitionInterval;
 use App\Database\Partitioning\PartitionMaintainer;
 use App\Models\Company;

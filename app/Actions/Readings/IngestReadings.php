@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions;
+namespace App\Actions\Readings;
 
 use App\Models\Device;
 use Carbon\CarbonImmutable;
@@ -121,6 +121,7 @@ class IngestReadings
 
         if (strlen($time) === 16 && ctype_digit($time)) {
             $parsed = substr($time, 0, 10).'.'.substr($time, 10);
+
             return CarbonImmutable::createFromFormat('U.u', $parsed, 'UTC');
         }
 

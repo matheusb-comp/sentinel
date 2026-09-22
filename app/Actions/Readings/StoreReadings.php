@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions;
+namespace App\Actions\Readings;
 
 use Illuminate\Support\Facades\DB;
 
