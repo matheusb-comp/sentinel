@@ -130,3 +130,13 @@ it('writes through the connection that is current when it runs', function () {
 
     tenancy()->end();
 });
+
+it('stores every significant digit of a value', function () {
+    $sensor = seedSeriesSensor();
+    $start = CarbonImmutable::now('UTC')->startOfHour();
+
+    app(StoreReadings::class)->handle(readingsAt($sensor->id, $start, 3.141592653589793, 9007199254740991.0));
+
+    expect(DB::table('readings')->where('sensor_id', $sensor->id)->orderBy('time')->pluck('value')->all())
+        ->toBe([3.141592653589793, 9007199254740991.0]);
+});

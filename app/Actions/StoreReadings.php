@@ -16,9 +16,10 @@ class StoreReadings
 {
     /**
      * `time` is a string formatted as `Y-m-d H:i:s.uP`: a Carbon binding loses
-     * the fraction.
+     * the fraction. `value` is bound as the shortest string that reads back as
+     * the same double, because a float binding keeps 14 significant digits.
      *
-     * @param  list<array{sensor_id: int, time: string, value: float}> $readings
+     * @param  list<array{sensor_id: int, time: string, value: float}>  $readings
      * @return int how many readings were new
      */
     public function handle(array $readings): int
@@ -34,7 +35,7 @@ class StoreReadings
             $tuples[] = '(?, ?, ?)';
             $bindings[] = $reading['time'];
             $bindings[] = $reading['sensor_id'];
-            $bindings[] = $reading['value'];
+            $bindings[] = var_export($reading['value'], true);
         }
 
         $rollups = [];
