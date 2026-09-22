@@ -1,9 +1,11 @@
 <?php
 
 use App\Actions\CreateCompanyForUser;
+use App\Actions\CreateDevice;
 use App\Database\Partitioning\PartitionInterval;
 use App\Database\Partitioning\PartitionMaintainer;
 use App\Http\Middleware\ResolveCompanyByUuid;
+use App\Models\Company;
 use App\Models\CompanyUser;
 use App\Models\Device;
 use App\Models\Sensor;
@@ -42,7 +44,7 @@ pest()->extend(TestCase::class)
     ->beforeEach(function () {
         // migrate:fresh leaves the series tables out and drops the policies,
         // which are derived from the tables that exist, hence this order.
-        // Partitions come from seedSeriesSensor(), in the tests that write.
+        // Partitions come from createSeriesPartitions(), in the tests that write.
         $this->artisan('series:setup');
         $this->artisan('tenants:rls');
     })
@@ -95,13 +97,38 @@ function seedSeriesSensor(): Sensor
     $company = app(CreateCompanyForUser::class)->handle(User::factory()->create(), 'A');
     $device = Device::factory()->create(['company_id' => $company->id]);
 
+    createSeriesPartitions();
+
+    return Sensor::factory()->create(['device_id' => $device->id]);
+}
+
+/**
+ * Creates the current partition of every series table, and the ones back to
+ * `$backfill` when it is given.
+ */
+function createSeriesPartitions(?string $backfill = null): void
+{
     foreach (config('series.tables') as $table => $settings) {
         app(PartitionMaintainer::class)->maintain(
             $table,
             PartitionInterval::from($settings['partition']),
             premake: 0,
+            backfill: $backfill,
         );
     }
+}
 
-    return Sensor::factory()->create(['device_id' => $device->id]);
+/**
+ * A device registered with the given sensor keys, and the token it was issued.
+ *
+ * @param  list<string>  $sensorKeys
+ * @return array{device: Device, token: string}
+ */
+function registerDevice(array $sensorKeys = ['temp']): array
+{
+    return app(CreateDevice::class)->handle(
+        Company::factory()->create(),
+        'ATIVO-'.fake()->unique()->numberBetween(1, 999999),
+        array_map(fn (string $key): array => ['key' => $key, 'description' => null], $sensorKeys),
+    );
 }

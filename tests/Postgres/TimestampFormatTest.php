@@ -2,6 +2,7 @@
 
 use App\Models\Company;
 use App\Models\Device;
+use App\Models\PersonalAccessToken;
 use App\Models\Sensor;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -25,7 +26,9 @@ it('reports every date column of the model, not only the timestamps', function (
         ->and((new Device)->getDates())
         ->toBe(['created_at', 'updated_at', 'archived_at'])
         ->and((new Sensor)->getDates())
-        ->toBe(['created_at', 'updated_at', 'archived_at']);
+        ->toBe(['created_at', 'updated_at', 'archived_at'])
+        ->and((new PersonalAccessToken)->getDates())
+        ->toBe(['created_at', 'updated_at', 'last_used_at', 'expires_at']);
 });
 
 it('serializes a date column outside the timestamps with an offset', function (Model $model) {

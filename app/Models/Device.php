@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Sanctum\HasApiTokens;
 use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
 /**
@@ -24,7 +25,7 @@ use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 class Device extends Model
 {
     /** @use HasFactory<DeviceFactory> */
-    use BelongsToTenant, HasFactory, HasIsoTimestamps, HasPublicUuid;
+    use BelongsToTenant, HasApiTokens, HasFactory, HasIsoTimestamps, HasPublicUuid;
 
     /**
      * The owning tenant, under the name the rest of the application uses for it.
