@@ -34,7 +34,18 @@ class CreateDevice
         // Transaction built on the Device connection to cover every write.
         return (new Device)->getConnection()->transaction(function () use ($key, $sensors, $label): array {
             // Locked to prevent race conditions with device archival requests.
-            $device = Device::where('key', $key)->lockForUpdate()->first() ?? new Device(['key' => $key]);
+            $device = Device::where('key', $key)->lockForUpdate()->first();
+
+            if ($device === null) {
+                // A key no row holds yet cannot be locked, so firstOrCreate
+                // reads the winner when a competing insert lands first.
+                $device = Device::firstOrCreate(['key' => $key]);
+
+                if (! $device->wasRecentlyCreated) {
+                    // Another transaction's row, so it still needs the lock.
+                    $device = Device::where('key', $key)->lockForUpdate()->sole();
+                }
+            }
 
             $device->archived_at = null;
 

@@ -3,6 +3,7 @@
 use App\Actions\Devices\SyncDeviceSensors;
 use App\Models\Device;
 use App\Models\Sensor;
+use Illuminate\Support\Facades\DB;
 
 it('creates what is new and updates the description of what exists', function () {
     $device = Device::factory()->create();
@@ -59,6 +60,23 @@ it('leaves the sensors of another device alone', function () {
     app(SyncDeviceSensors::class)->handle($device, [['key' => 'hum', 'description' => null]]);
 
     expect($other->sensors()->whereNotNull('archived_at')->count())->toBe(0);
+});
+
+it('does not query per sensor when the declaration did not change', function () {
+    $device = Device::factory()->create();
+    $declared = [];
+
+    foreach (['temp', 'hum', 'co2', 'lux', 'volt'] as $key) {
+        Sensor::factory()->create(['device_id' => $device->id, 'key' => $key, 'description' => null]);
+        $declared[] = ['key' => $key, 'description' => null];
+    }
+
+    DB::enableQueryLog();
+
+    app(SyncDeviceSensors::class)->handle($device, $declared);
+
+    // One read of the declared keys, one sweep of the ones left out.
+    expect(DB::getQueryLog())->toHaveCount(2);
 });
 
 it('archives every sensor when the device declares an empty list', function () {

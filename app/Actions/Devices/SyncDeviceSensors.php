@@ -24,11 +24,17 @@ class SyncDeviceSensors
         // The device's own connection, which its relations write on, so the
         // transaction covers them.
         $device->getConnection()->transaction(function () use ($device, $sensors): void {
+            $existing = $device->sensors()
+                ->whereIn('key', array_column($sensors, 'key'))
+                ->get()
+                ->keyBy('key');
+
             foreach ($sensors as $declared) {
-                $sensor = $device->sensors()->firstOrNew(['key' => $declared['key']]);
+                $sensor = $existing[$declared['key']] ?? $device->sensors()->make(['key' => $declared['key']]);
 
                 $sensor->description = $declared['description'] ?? null;
                 $sensor->archived_at = null;
+                // An unchanged sensor is not dirty, so this writes nothing.
                 $sensor->save();
             }
 

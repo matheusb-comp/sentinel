@@ -45,6 +45,37 @@ it('leaves no token behind when the registration is rolled back inside tenancy',
     expect(PersonalAccessToken::count())->toBe(0);
 });
 
+it('registers a device whose key a competing registration inserts first', function () {
+    config(['database.connections.rival' => config('database.connections.pgsql_testing')]);
+    $company = app(CreateCompanyForUser::class)->handle(User::factory()->create(), 'A');
+
+    tenancy()->initialize($company);
+
+    $competed = false;
+
+    // A competing registration, committed on its own connection between the
+    // lookup that finds nothing and the insert.
+    Device::creating(function (Device $device) use (&$competed): void {
+        if ($competed) {
+            return;
+        }
+
+        $competed = true;
+
+        Device::on('rival')->create(['key' => $device->key]);
+    });
+
+    ['device' => $registered, 'token' => $token] = app(CreateDevice::class)->handle('ATIVO-1');
+
+    tenancy()->end();
+
+    // sole() fails if the collision left a second device holding the key.
+    $winner = Device::where('key', 'ATIVO-1')->sole();
+
+    expect($registered->id)->toBe($winner->id)
+        ->and(PersonalAccessToken::findToken($token)->tokenable_id)->toBe($winner->id);
+});
+
 it('registers an existing device again inside tenancy', function () {
     $company = app(CreateCompanyForUser::class)->handle(User::factory()->create(), 'A');
     ['device' => $device] = registerDeviceIn($company, 'ATIVO-1');
