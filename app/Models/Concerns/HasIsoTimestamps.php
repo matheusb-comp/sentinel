@@ -2,6 +2,8 @@
 
 namespace App\Models\Concerns;
 
+use Illuminate\Database\Eloquent\Model;
+
 /**
  * Stores and serializes dates as ISO-8601 with a numeric offset.
  *
@@ -14,6 +16,8 @@ namespace App\Models\Concerns;
  * `getDates()` is where a model declares its date columns, and by default that
  * is just `created_at` and `updated_at`. A model with others lists them there
  * and spreads `isoCasts()` into its own `casts()`, so each column is named once.
+ *
+ * @mixin Model
  */
 trait HasIsoTimestamps
 {

@@ -119,17 +119,38 @@ function createSeriesPartitions(?string $backfill = null): void
 }
 
 /**
- * A device registered with the given sensor keys, and the token it was issued.
+ * Registers a device in the company, inside its tenancy, as the endpoints do.
+ *
+ * @param  list<string>  $sensorKeys
+ * @return array{device: Device, token: string}
+ */
+function registerDeviceIn(Company $company, string $key, array $sensorKeys = ['temp']): array
+{
+    $registered = $company->run(fn (): array => app(CreateDevice::class)->handle(
+        $key,
+        array_map(fn (string $sensorKey): array => ['key' => $sensorKey, 'description' => null], $sensorKeys),
+    ));
+
+    // Read again outside the tenancy, so the device is not pinned to the tenant
+    // connection.
+    return [
+        'device' => Device::findOrFail($registered['device']->getKey()),
+        'token' => $registered['token'],
+    ];
+}
+
+/**
+ * A registered device of a company of its own, and the token it was issued.
  *
  * @param  list<string>  $sensorKeys
  * @return array{device: Device, token: string}
  */
 function registerDevice(array $sensorKeys = ['temp']): array
 {
-    return app(CreateDevice::class)->handle(
+    return registerDeviceIn(
         Company::factory()->create(),
         'ATIVO-'.fake()->unique()->numberBetween(1, 999999),
-        array_map(fn (string $key): array => ['key' => $key, 'description' => null], $sensorKeys),
+        $sensorKeys,
     );
 }
 
@@ -140,4 +161,17 @@ function registerDevice(array $sensorKeys = ['temp']): array
 function issueUserToken(User $user, Company $company): string
 {
     return $company->run(fn (): string => $user->createToken('test')->plainTextToken);
+}
+
+/**
+ * A company whose member is authenticated for the API by their token.
+ */
+function actingAsMember(): Company
+{
+    $user = User::factory()->create();
+    $company = app(CreateCompanyForUser::class)->handle($user, 'Acme');
+
+    test()->withToken(issueUserToken($user, $company));
+
+    return $company;
 }

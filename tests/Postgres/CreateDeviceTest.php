@@ -5,20 +5,18 @@ use App\Actions\Devices\CreateDevice;
 use App\Models\Device;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
-it('leaves no device behind when a sensor is rejected inside tenancy', function () {
+it('leaves no device behind when the token cannot be issued inside tenancy', function () {
+    config(['ingestion.max_tokens_per_device' => 0]);
     $company = app(CreateCompanyForUser::class)->handle(User::factory()->create(), 'A');
 
     tenancy()->initialize($company);
 
-    $create = fn () => app(CreateDevice::class)->handle($company, 'ATIVO-1', [
-        ['key' => 'temp', 'description' => null],
-        ['key' => 'temp', 'description' => null],
-    ]);
+    $register = fn () => app(CreateDevice::class)->handle('ATIVO-1', [['key' => 'temp', 'description' => null]]);
 
-    expect($create)->toThrow(QueryException::class);
+    expect($register)->toThrow(ValidationException::class);
 
     // Read past the policies: a rolled back row is gone for everyone, while a
     // row they merely hide would still be holding the unique key.
@@ -34,8 +32,8 @@ it('leaves no token behind when the registration is rolled back inside tenancy',
 
     tenancy()->initialize($company);
 
-    $register = fn () => DB::transaction(function () use ($company) {
-        app(CreateDevice::class)->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
+    $register = fn () => DB::transaction(function () {
+        app(CreateDevice::class)->handle('ATIVO-1', [['key' => 'temp', 'description' => null]]);
 
         throw new RuntimeException('Roll the registration back.');
     });
@@ -49,11 +47,11 @@ it('leaves no token behind when the registration is rolled back inside tenancy',
 
 it('registers an existing device again inside tenancy', function () {
     $company = app(CreateCompanyForUser::class)->handle(User::factory()->create(), 'A');
-    ['device' => $device] = app(CreateDevice::class)->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
+    ['device' => $device] = registerDeviceIn($company, 'ATIVO-1');
 
     tenancy()->initialize($company);
 
-    $again = app(CreateDevice::class)->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
+    $again = app(CreateDevice::class)->handle('ATIVO-1', [['key' => 'temp', 'description' => null]]);
 
     tenancy()->end();
 

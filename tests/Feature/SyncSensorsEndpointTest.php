@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Requests\Ingest\V1\SyncSensorsRequest;
 use Illuminate\Support\Str;
 
 it('reconciles the sensors with the list the device declares', function () {
@@ -41,11 +40,18 @@ it('refuses a declaration that does not reconcile', function (array $body, strin
     'repeated key' => [['sensors' => [['key' => 'temp'], ['key' => 'temp']]], 'sensors.1.key'],
     'key too long' => [['sensors' => [['key' => Str::repeat('k', 256)]]], 'sensors.0.key'],
     'description too long' => [['sensors' => [['key' => 'temp', 'description' => Str::repeat('d', 256)]]], 'sensors.0.description'],
-    'over the maximum' => [
-        ['sensors' => array_map(fn (int $i): array => ['key' => "s{$i}"], range(0, SyncSensorsRequest::MAX_SENSORS))],
-        'sensors',
-    ],
 ]);
+
+it('refuses more sensors than a device may declare', function () {
+    config(['ingestion.max_sensors_per_device' => 2]);
+    ['token' => $token] = registerDevice();
+
+    $this->withToken($token)->putJson('/in/v1/sync', [
+        'sensors' => array_map(fn (int $i): array => ['key' => "s{$i}"], range(1, 3)),
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('sensors');
+});
 
 it('refuses a body sent without a JSON content type', function () {
     ['token' => $token] = registerDevice();

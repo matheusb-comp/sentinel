@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasArchivedState;
 use App\Models\Concerns\HasIsoTimestamps;
 use App\Models\Concerns\HasPublicUuid;
 use Database\Factories\DeviceFactory;
@@ -25,7 +26,7 @@ use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 class Device extends Model
 {
     /** @use HasFactory<DeviceFactory> */
-    use BelongsToTenant, HasApiTokens, HasFactory, HasIsoTimestamps, HasPublicUuid;
+    use BelongsToTenant, HasApiTokens, HasArchivedState, HasFactory, HasIsoTimestamps, HasPublicUuid;
 
     /**
      * The owning tenant, under the name the rest of the application uses for it.

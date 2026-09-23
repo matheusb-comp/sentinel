@@ -1,6 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ArchiveDeviceController;
+use App\Http\Controllers\Api\V1\ListDevicesController;
+use App\Http\Controllers\Api\V1\ListDeviceTokensController;
+use App\Http\Controllers\Api\V1\RegisterDeviceController;
+use App\Http\Controllers\Api\V1\RevokeDeviceTokenController;
 use App\Http\Controllers\Api\V1\ShowCompanyController;
+use App\Http\Controllers\Api\V1\ShowDeviceController;
 use App\Http\Controllers\Api\V1\ShowMembershipController;
 use App\Http\Middleware\ResolveCompanyByUuid;
 use Illuminate\Support\Facades\Route;
@@ -18,4 +24,12 @@ Route::prefix('v1/companies/{company}')
     ->group(function () {
         Route::get('/', ShowCompanyController::class);
         Route::get('/membership', ShowMembershipController::class);
+
+        Route::get('/devices', ListDevicesController::class);
+        Route::post('/devices', RegisterDeviceController::class);
+        Route::get('/devices/{device}', ShowDeviceController::class);
+        Route::delete('/devices/{device}', ArchiveDeviceController::class);
+
+        Route::get('/devices/{device}/tokens', ListDeviceTokensController::class);
+        Route::delete('/devices/{device}/tokens/{token}', RevokeDeviceTokenController::class)->scopeBindings();
     });

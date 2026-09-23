@@ -14,21 +14,13 @@ use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
  * other model.
  *
  * The owner is polymorphic, with no key the tenancy can follow, so the token
- * carries a company_id: the current tenant's, filled by BelongsToTenant, or its
- * owner's when it is created outside tenancy. A user is associated to multiple
- * companies, so a user token can only be created inside tenancy.
+ * carries a company_id, which BelongsToTenant fills from the tenancy it is
+ * created in.
  */
 #[Hidden(['id', 'company_id', 'token', 'tokenable_type', 'tokenable_id'])]
 class PersonalAccessToken extends SanctumPersonalAccessToken
 {
     use BelongsToTenant, HasIsoTimestamps, HasPublicUuid;
-
-    protected static function booted(): void
-    {
-        static::creating(function (self $token): void {
-            $token->company_id ??= $token->tokenable->company_id;
-        });
-    }
 
     /**
      * Sanctum reads what comes before a `|` as the token's numeric key, and on

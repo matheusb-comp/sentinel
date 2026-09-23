@@ -13,8 +13,6 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class SyncSensorsRequest extends FormRequest
 {
-    public const MAX_SENSORS = 1000;
-
     /**
      * Get the validation rules that apply to the request.
      *
@@ -23,7 +21,7 @@ class SyncSensorsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'sensors' => ['required', 'list', 'max:'.self::MAX_SENSORS],
+            'sensors' => ['required', 'list', 'max:'.config('ingestion.max_sensors_per_device')],
             'sensors.*.key' => ['required', 'string', 'max:255', 'distinct:strict'],
             'sensors.*.description' => ['nullable', 'string', 'max:255'],
         ];

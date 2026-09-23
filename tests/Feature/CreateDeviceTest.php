@@ -5,16 +5,15 @@ use App\Actions\Devices\CreateDevice;
 use App\Models\Company;
 use App\Models\Device;
 use App\Models\PersonalAccessToken;
-use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
 
 it('creates the device with the sensors it declared', function () {
     $company = Company::factory()->create();
 
-    ['device' => $device] = app(CreateDevice::class)->handle($company, 'ATIVO-1', [
+    ['device' => $device] = $company->run(fn () => app(CreateDevice::class)->handle('ATIVO-1', [
         ['key' => 'temp', 'description' => 'DS18B20 3-pin 1 meter cable'],
         ['key' => 'hum', 'description' => null],
-    ], 'Câmara fria 3');
+    ], 'Câmara fria 3'));
 
     expect($device->company_id)->toBe($company->id)
         ->and($device->label)->toBe('Câmara fria 3')
@@ -25,26 +24,40 @@ it('creates the device with the sensors it declared', function () {
 
 it('returns the device already registered under the key instead of a second one', function () {
     $company = Company::factory()->create();
-    $action = app(CreateDevice::class);
 
-    $first = $action->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
-    $second = $action->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
+    [$first, $second] = $company->run(fn () => [
+        app(CreateDevice::class)->handle('ATIVO-1', [['key' => 'temp', 'description' => null]]),
+        app(CreateDevice::class)->handle('ATIVO-1', [['key' => 'temp', 'description' => null]]),
+    ]);
 
     expect($second['device']->id)->toBe($first['device']->id)
         ->and(Device::count())->toBe(1);
 });
 
-it('leaves the label and the sensors of a registered device untouched', function () {
+it('reconciles the sensors and the label declared again', function () {
     $company = Company::factory()->create();
-    $action = app(CreateDevice::class);
 
-    ['device' => $device] = $action->handle($company, 'ATIVO-1', [
+    ['device' => $device] = $company->run(fn () => app(CreateDevice::class)->handle('ATIVO-1', [
         ['key' => 'temp', 'description' => 'original'],
-    ], 'Named by a person');
+    ], 'Named by a person'));
 
-    $action->handle($company, 'ATIVO-1', [
+    $company->run(fn () => app(CreateDevice::class)->handle('ATIVO-1', [
         ['key' => 'hum', 'description' => 'declared later'],
-    ], 'Renamed by a script');
+    ], 'Renamed by a script'));
+
+    expect($device->fresh()->label)->toBe('Renamed by a script')
+        ->and($device->sensors()->whereNull('archived_at')->pluck('key')->all())->toBe(['hum'])
+        ->and($device->sensors()->whereNotNull('archived_at')->pluck('key')->all())->toBe(['temp']);
+});
+
+it('leaves the sensors and the label alone when the registration declares neither', function () {
+    $company = Company::factory()->create();
+
+    ['device' => $device] = $company->run(fn () => app(CreateDevice::class)->handle('ATIVO-1', [
+        ['key' => 'temp', 'description' => null],
+    ], 'Named by a person'));
+
+    $company->run(fn () => app(CreateDevice::class)->handle('ATIVO-1'));
 
     expect($device->fresh()->label)->toBe('Named by a person')
         ->and($device->sensors()->pluck('key')->all())->toBe(['temp']);
@@ -52,29 +65,36 @@ it('leaves the label and the sensors of a registered device untouched', function
 
 it('reactivates an archived device registered under the same key, with a new token', function () {
     $company = Company::factory()->create();
-    $action = app(CreateDevice::class);
 
-    ['device' => $device] = $action->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
+    ['device' => $device] = $company->run(fn () => app(CreateDevice::class)->handle(
+        'ATIVO-1',
+        [['key' => 'temp', 'description' => null]],
+    ));
     app(ArchiveDevice::class)->handle($device);
 
-    $again = $action->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
+    $again = $company->run(fn () => app(CreateDevice::class)->handle(
+        'ATIVO-1',
+        [['key' => 'temp', 'description' => null]],
+    ));
 
     expect($again['device']->id)->toBe($device->id)
         ->and($again['device']->archived_at)->toBeNull()
+        ->and($device->sensors()->sole()->archived_at)->toBeNull()
         ->and(Device::count())->toBe(1)
         ->and(PersonalAccessToken::findToken($again['token'])->tokenable->is($device))->toBeTrue()
         ->and($device->tokens()->count())->toBe(1);
 });
 
-it('creates no device when one of the sensors is rejected', function () {
+it('creates no device when the token cannot be issued', function () {
+    config(['ingestion.max_tokens_per_device' => 0]);
     $company = Company::factory()->create();
 
-    $create = fn () => app(CreateDevice::class)->handle($company, 'ATIVO-1', [
-        ['key' => 'temp', 'description' => null],
-        ['key' => 'temp', 'description' => null],
-    ]);
+    $register = fn () => $company->run(fn () => app(CreateDevice::class)->handle(
+        'ATIVO-1',
+        [['key' => 'temp', 'description' => null]],
+    ));
 
-    expect($create)->toThrow(QueryException::class)
+    expect($register)->toThrow(ValidationException::class)
         ->and(Device::count())->toBe(0);
 });
 
@@ -96,10 +116,11 @@ it('finds the tokens of devices loaded together', function () {
 
 it('issues a new token on every registration and keeps the earlier ones', function () {
     $company = Company::factory()->create();
-    $action = app(CreateDevice::class);
 
-    $first = $action->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
-    $second = $action->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
+    [$first, $second] = $company->run(fn () => [
+        app(CreateDevice::class)->handle('ATIVO-1', [['key' => 'temp', 'description' => null]]),
+        app(CreateDevice::class)->handle('ATIVO-1', [['key' => 'temp', 'description' => null]]),
+    ]);
 
     expect($second['token'])->not->toBe($first['token'])
         ->and(PersonalAccessToken::findToken($first['token']))->not->toBeNull()
@@ -109,7 +130,10 @@ it('issues a new token on every registration and keeps the earlier ones', functi
 it('refuses to register a device that holds the maximum number of tokens', function () {
     config(['ingestion.max_tokens_per_device' => 2]);
     $company = Company::factory()->create();
-    $register = fn () => app(CreateDevice::class)->handle($company, 'ATIVO-1', [['key' => 'temp', 'description' => null]]);
+    $register = fn () => $company->run(fn () => app(CreateDevice::class)->handle(
+        'ATIVO-1',
+        [['key' => 'temp', 'description' => null]],
+    ));
 
     $register();
     $register();

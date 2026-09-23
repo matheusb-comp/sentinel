@@ -36,3 +36,10 @@ The suite also holds tests that only prove something on Postgres, whatever the f
 The two suites must stay in separate processes: `RefreshDatabaseState::$migrated` is a global static, so in one process the first suite to migrate would leave the second running against an unmigrated database. Do not try to switch connections per directory in `tests/Pest.php`.
 
 Neither testing connection lets `phpunit.xml` set the database name: compose.yaml injects `DB_DATABASE` as a real OS env var, and Laravel's env repository is immutable, so neither `force="true"` nor `.env.testing` can override it. `sqlite_testing` hardcodes `:memory:`; `pgsql_testing` derives from `DB_DATABASE` in PHP. Only `DB_CONNECTION` is switchable from `phpunit.xml`, which is why each suite selects a whole connection.
+
+## Run the Postgres suite only when the change can reach it
+The Postgres suite costs about 165 seconds; the default one costs 5. While iterating, run the affected test file only. Run the whole default suite before handing work over.
+
+Run the Postgres suite when the change reaches what it covers: migrations or schema, tests/Pest.php, model traits or connections, the actions it exercises (CreateDevice, SyncDeviceSensors, StoreReadings, partitioning), tenancy config or bootstrappers, and the tenant route chain. Run it once more at the end of a cycle.
+
+In doubt, run the single Postgres file instead of the suite: one file takes seconds.

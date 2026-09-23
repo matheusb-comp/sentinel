@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasArchivedState;
 use App\Models\Concerns\HasIsoTimestamps;
 use App\Models\Concerns\HasPublicUuid;
 use Database\Factories\SensorFactory;
@@ -26,7 +27,7 @@ use Stancl\Tenancy\Database\Concerns\BelongsToPrimaryModel;
 class Sensor extends Model
 {
     /** @use HasFactory<SensorFactory> */
-    use BelongsToPrimaryModel, HasFactory, HasIsoTimestamps, HasPublicUuid;
+    use BelongsToPrimaryModel, HasArchivedState, HasFactory, HasIsoTimestamps, HasPublicUuid;
 
     public function getRelationshipToPrimaryModel(): string
     {
