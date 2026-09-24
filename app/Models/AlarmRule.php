@@ -23,7 +23,7 @@ use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
  * AlarmMonitor is what applies it to one sensor — so the same rule covers a
  * hundred freezers, and the threshold is edited in one place.
  */
-#[Fillable(['type', 'direction', 'threshold', 'trigger_after', 'clear_after', 'max_reading_age', 'active'])]
+#[Fillable(['label', 'type', 'direction', 'threshold', 'trigger_after', 'clear_after', 'max_reading_age', 'active'])]
 #[Hidden(['id', 'company_id'])]
 class AlarmRule extends Model
 {

@@ -27,8 +27,6 @@ return new class extends Migration
             // Readings up to here have been considered, never past our own clock.
             $table->timestampTz('evaluated_through')->nullable();
 
-            $table->double('last_value')->nullable();
-
             // When the clock has to look at this monitor without a new reading.
             $table->timestampTz('next_check_at')->nullable()->index();
 

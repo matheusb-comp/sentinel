@@ -12,7 +12,7 @@ use Carbon\CarbonImmutable;
  *
  * Pure: it reads no clock and touches no database. `$now` is the instant the
  * caller is evaluating at, and the monitor is left changed in memory for the
- * caller to save.
+ * caller to save. Whether the status moved is `isDirty('status')` on it.
  *
  * Entering and leaving alarm are the same operation. A value on the side
  * opposite the status stamps `pending_since`, and the duration of that side —
@@ -27,22 +27,19 @@ use Carbon\CarbonImmutable;
  */
 class EvaluateAlarmRule
 {
-    /**
-     * @return bool whether the status changed
-     */
     public function handle(
         AlarmRule $rule,
         AlarmMonitor $monitor,
         CarbonImmutable $time,
         float $value,
         CarbonImmutable $now,
-    ): bool {
+    ): void {
         if ($monitor->evaluated_through !== null && ! $time->greaterThan($monitor->evaluated_through)) {
-            return false;
+            return;
         }
 
         if ($time->lessThan($now->subSeconds($rule->maxReadingAge()))) {
-            return false;
+            return;
         }
 
         if ($monitor->status === AlarmStatus::Waiting) {
@@ -51,7 +48,6 @@ class EvaluateAlarmRule
         }
 
         $breaching = $rule->direction->breaches($value, $rule->threshold);
-        $changed = false;
 
         if ($monitor->status === AlarmStatus::Ok ? $breaching : ! $breaching) {
             $monitor->pending_since ??= $time;
@@ -66,7 +62,6 @@ class EvaluateAlarmRule
                 $monitor->status = $monitor->status === AlarmStatus::Ok ? AlarmStatus::Alarm : AlarmStatus::Ok;
                 $monitor->status_since = $time;
                 $monitor->pending_since = null;
-                $changed = true;
             } else {
                 $monitor->next_check_at = $now->addSeconds($duration - $elapsed);
             }
@@ -79,8 +74,5 @@ class EvaluateAlarmRule
         }
 
         $monitor->evaluated_through = $time->lessThan($now) ? $time : $now;
-        $monitor->last_value = $value;
-
-        return $changed;
     }
 }

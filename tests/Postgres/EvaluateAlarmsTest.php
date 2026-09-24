@@ -41,5 +41,5 @@ it('locks the monitors when it reads them, not when it writes them', function ()
     // status out of a row another batch is about to replace. Blocking only at
     // the write would let both read the same stale monitor.
     expect($blocked)->toStartWith('select')
-        ->and($watch->refresh()->last_value)->toBeNull();
+        ->and($watch->refresh()->evaluated_through)->toBeNull();
 });

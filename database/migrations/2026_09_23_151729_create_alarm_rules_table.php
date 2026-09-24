@@ -16,6 +16,9 @@ return new class extends Migration
             // alarm_monitors row is what applies it to one.
             $table->foreignId('company_id')->index()->constrained()->restrictOnDelete();
 
+            // Optional custom label used for display.
+            $table->string('label')->nullable();
+
             $table->string('type');
 
             // Null on a rule that watches silence instead of a value.

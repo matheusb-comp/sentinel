@@ -2,6 +2,7 @@
 
 use App\Actions\Companies\CreateCompanyForUser;
 use App\Models\CompanyUser;
+use App\Models\Device;
 use App\Models\User;
 use App\Rules\ExistsByUuid;
 use Illuminate\Support\Facades\Validator;
@@ -52,4 +53,15 @@ it('rejects a value that is not a uuid', function () {
     );
 
     expect($validator->errors()->first('member_uuid'))->toBe('The member uuid field must be a valid UUID.');
+});
+
+it('counts only what its constraints leave in', function () {
+    $active = Device::factory()->create();
+    $archived = Device::factory()->create();
+    Device::whereKey($archived->id)->update(['archived_at' => now()]);
+
+    $rule = fn (): array => [(new ExistsByUuid(Device::class))->whereNull('archived_at')];
+
+    expect(Validator::make(['device_uuid' => $active->uuid], ['device_uuid' => $rule()])->passes())->toBeTrue()
+        ->and(Validator::make(['device_uuid' => $archived->uuid], ['device_uuid' => $rule()])->passes())->toBeFalse();
 });

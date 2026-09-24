@@ -21,7 +21,7 @@ use Stancl\Tenancy\Database\Concerns\BelongsToPrimaryModel;
  * same in both directions — the value is on the side opposite the status, and
  * has been since that instant.
  */
-#[Fillable(['alarm_rule_id', 'sensor_id', 'status', 'status_since', 'pending_since', 'evaluated_through', 'last_value', 'next_check_at'])]
+#[Fillable(['alarm_rule_id', 'sensor_id', 'status', 'status_since', 'pending_since', 'evaluated_through', 'next_check_at'])]
 #[Hidden(['id', 'alarm_rule_id', 'sensor_id'])]
 class AlarmMonitor extends Model
 {
@@ -75,7 +75,6 @@ class AlarmMonitor extends Model
         return [
             ...$this->isoCasts(),
             'status' => AlarmStatus::class,
-            'last_value' => 'float',
         ];
     }
 }

@@ -20,7 +20,7 @@ class IngestReadings
      * The largest magnitude up to which a double holds every integer exactly.
      * Past it, a counter would be stored as a different number.
      */
-    private const MAX_MAGNITUDE = 9007199254740991;
+    public const MAX_MAGNITUDE = 9007199254740991;
 
     public function __construct(private StoreReadings $storeReadings) {}
 

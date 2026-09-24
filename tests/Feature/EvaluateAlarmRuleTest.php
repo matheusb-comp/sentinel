@@ -32,9 +32,9 @@ function alarmMonitor(array $attributes = []): AlarmMonitor
     ]);
 }
 
-function evaluateReading(AlarmRule $rule, AlarmMonitor $monitor, string $time, float $value, string $now = '2026-09-23T10:00:00Z'): bool
+function evaluateReading(AlarmRule $rule, AlarmMonitor $monitor, string $time, float $value, string $now = '2026-09-23T10:00:00Z'): void
 {
-    return app(EvaluateAlarmRule::class)->handle(
+    app(EvaluateAlarmRule::class)->handle(
         $rule,
         $monitor,
         CarbonImmutable::parse($time),
@@ -46,21 +46,18 @@ function evaluateReading(AlarmRule $rule, AlarmMonitor $monitor, string $time, f
 it('stamps the crossing without alarming yet', function () {
     $monitor = alarmMonitor();
 
-    $changed = evaluateReading(alarmRule(), $monitor, '2026-09-23T10:00:00Z', 9.0);
+    evaluateReading(alarmRule(), $monitor, '2026-09-23T10:00:00Z', 9.0);
 
-    expect($changed)->toBeFalse()
-        ->and($monitor->status)->toBe(AlarmStatus::Ok)
-        ->and($monitor->pending_since->toIso8601String())->toBe('2026-09-23T10:00:00+00:00')
-        ->and($monitor->last_value)->toBe(9.0);
+    expect($monitor->status)->toBe(AlarmStatus::Ok)
+        ->and($monitor->pending_since->toIso8601String())->toBe('2026-09-23T10:00:00+00:00');
 });
 
 it('alarms when the reading clock passes the duration', function () {
     $monitor = alarmMonitor(['pending_since' => CarbonImmutable::parse('2026-09-23T10:00:00Z')]);
 
-    $changed = evaluateReading(alarmRule(), $monitor, '2026-09-23T10:10:00Z', 9.0, '2026-09-23T10:10:00Z');
+    evaluateReading(alarmRule(), $monitor, '2026-09-23T10:10:00Z', 9.0, '2026-09-23T10:10:00Z');
 
-    expect($changed)->toBeTrue()
-        ->and($monitor->status)->toBe(AlarmStatus::Alarm)
+    expect($monitor->status)->toBe(AlarmStatus::Alarm)
         ->and($monitor->pending_since)->toBeNull()
         ->and($monitor->status_since->toIso8601String())->toBe('2026-09-23T10:10:00+00:00');
 });
@@ -68,19 +65,17 @@ it('alarms when the reading clock passes the duration', function () {
 it('does not alarm one second early', function () {
     $monitor = alarmMonitor(['pending_since' => CarbonImmutable::parse('2026-09-23T10:00:00Z')]);
 
-    $changed = evaluateReading(alarmRule(), $monitor, '2026-09-23T10:09:59Z', 9.0, '2026-09-23T10:09:59Z');
+    evaluateReading(alarmRule(), $monitor, '2026-09-23T10:09:59Z', 9.0, '2026-09-23T10:09:59Z');
 
-    expect($changed)->toBeFalse()
-        ->and($monitor->status)->toBe(AlarmStatus::Ok);
+    expect($monitor->status)->toBe(AlarmStatus::Ok);
 });
 
 it('clears the stamp when the value comes back', function () {
     $monitor = alarmMonitor(['pending_since' => CarbonImmutable::parse('2026-09-23T10:00:00Z')]);
 
-    $changed = evaluateReading(alarmRule(), $monitor, '2026-09-23T10:05:00Z', 7.0, '2026-09-23T10:05:00Z');
+    evaluateReading(alarmRule(), $monitor, '2026-09-23T10:05:00Z', 7.0, '2026-09-23T10:05:00Z');
 
-    expect($changed)->toBeFalse()
-        ->and($monitor->pending_since)->toBeNull()
+    expect($monitor->pending_since)->toBeNull()
         ->and($monitor->status)->toBe(AlarmStatus::Ok);
 });
 
@@ -103,61 +98,58 @@ it('treats the threshold itself as inside a low rule', function () {
 it('alarms on the crossing reading when the duration is zero', function () {
     $monitor = alarmMonitor();
 
-    $changed = evaluateReading(alarmRule(['trigger_after' => 0]), $monitor, '2026-09-23T10:00:00Z', 9.0);
+    evaluateReading(alarmRule(['trigger_after' => 0]), $monitor, '2026-09-23T10:00:00Z', 9.0);
 
-    expect($changed)->toBeTrue()
-        ->and($monitor->status)->toBe(AlarmStatus::Alarm)
+    expect($monitor->status)->toBe(AlarmStatus::Alarm)
         ->and($monitor->pending_since)->toBeNull();
 });
 
 it('recovers on the first reading back inside by default', function () {
     $monitor = alarmMonitor(['status' => AlarmStatus::Alarm]);
 
-    $changed = evaluateReading(alarmRule(), $monitor, '2026-09-23T10:00:00Z', 7.0);
+    evaluateReading(alarmRule(), $monitor, '2026-09-23T10:00:00Z', 7.0);
 
-    expect($changed)->toBeTrue()
-        ->and($monitor->status)->toBe(AlarmStatus::Ok);
+    expect($monitor->status)->toBe(AlarmStatus::Ok);
 });
 
 it('holds the alarm until the recovery duration passes', function () {
     $monitor = alarmMonitor(['status' => AlarmStatus::Alarm]);
     $rule = alarmRule(['clear_after' => 300]);
 
-    expect(evaluateReading($rule, $monitor, '2026-09-23T10:00:00Z', 7.0))->toBeFalse()
-        ->and($monitor->status)->toBe(AlarmStatus::Alarm)
+    evaluateReading($rule, $monitor, '2026-09-23T10:00:00Z', 7.0);
+
+    expect($monitor->status)->toBe(AlarmStatus::Alarm)
         ->and($monitor->pending_since->toIso8601String())->toBe('2026-09-23T10:00:00+00:00');
 
-    expect(evaluateReading($rule, $monitor, '2026-09-23T10:05:00Z', 7.0, '2026-09-23T10:05:00Z'))->toBeTrue()
-        ->and($monitor->status)->toBe(AlarmStatus::Ok);
+    evaluateReading($rule, $monitor, '2026-09-23T10:05:00Z', 7.0, '2026-09-23T10:05:00Z');
+
+    expect($monitor->status)->toBe(AlarmStatus::Ok);
 });
 
 it('starts a waiting monitor at ok, never straight at alarm', function () {
     $monitor = alarmMonitor(['status' => AlarmStatus::Waiting]);
 
-    $changed = evaluateReading(alarmRule(), $monitor, '2026-09-23T10:00:00Z', 99.0);
+    evaluateReading(alarmRule(), $monitor, '2026-09-23T10:00:00Z', 99.0);
 
-    expect($changed)->toBeFalse()
-        ->and($monitor->status)->toBe(AlarmStatus::Ok)
+    expect($monitor->status)->toBe(AlarmStatus::Ok)
         ->and($monitor->pending_since->toIso8601String())->toBe('2026-09-23T10:00:00+00:00');
 });
 
 it('ignores a reading not newer than the cursor', function () {
     $monitor = alarmMonitor(['evaluated_through' => CarbonImmutable::parse('2026-09-23T10:00:00Z')]);
 
-    $changed = evaluateReading(alarmRule(), $monitor, '2026-09-23T10:00:00Z', 9.0);
+    evaluateReading(alarmRule(), $monitor, '2026-09-23T10:00:00Z', 9.0);
 
-    expect($changed)->toBeFalse()
-        ->and($monitor->pending_since)->toBeNull()
-        ->and($monitor->last_value)->toBeNull();
+    expect($monitor->pending_since)->toBeNull()
+        ->and($monitor->evaluated_through->toIso8601String())->toBe('2026-09-23T10:00:00+00:00');
 });
 
 it('ignores a reading older than the tolerance', function () {
     $monitor = alarmMonitor();
 
-    $changed = evaluateReading(alarmRule(['max_reading_age' => 3600]), $monitor, '2026-09-23T08:00:00Z', 9.0, '2026-09-23T10:00:00Z');
+    evaluateReading(alarmRule(['max_reading_age' => 3600]), $monitor, '2026-09-23T08:00:00Z', 9.0, '2026-09-23T10:00:00Z');
 
-    expect($changed)->toBeFalse()
-        ->and($monitor->pending_since)->toBeNull()
+    expect($monitor->pending_since)->toBeNull()
         ->and($monitor->evaluated_through)->toBeNull();
 });
 
