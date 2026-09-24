@@ -88,3 +88,14 @@ it('archives every sensor when the device declares an empty list', function () {
 
     expect($device->sensors()->whereNull('archived_at')->count())->toBe(0);
 });
+
+it('converges when the same new key is declared twice', function () {
+    $device = Device::factory()->create();
+
+    app(SyncDeviceSensors::class)->handle($device, [
+        ['key' => 'temp', 'description' => null],
+        ['key' => 'temp', 'description' => 'DS18B20'],
+    ]);
+
+    expect($device->sensors()->where('key', 'temp')->value('description'))->toBe('DS18B20');
+});

@@ -22,7 +22,7 @@ return [
     /*
      * The most sensors a device can declare in one request, registering or
      * synchronizing. Reconciling compares each declared key with every other
-     * one and queries twice per sensor.
+     * one, and writes once per sensor that changed.
      */
     'max_sensors_per_device' => (int) env('INGESTION_MAX_SENSORS_PER_DEVICE', 1000),
 ];

@@ -40,6 +40,8 @@ Neither testing connection lets `phpunit.xml` set the database name: compose.yam
 ## Run the Postgres suite only when the change can reach it
 The Postgres suite costs about 165 seconds; the default one costs 5. While iterating, run the affected test file only. Run the whole default suite before handing work over.
 
-Run the Postgres suite when the change reaches what it covers: migrations or schema, tests/Pest.php, model traits or connections, the actions it exercises (CreateDevice, SyncDeviceSensors, StoreReadings, partitioning), tenancy config or bootstrappers, and the tenant route chain. Run it once more at the end of a cycle.
+**The default is not to run it.** Run it when the change reaches what only Postgres proves: migrations or schema, raw SQL, `tests/Pest.php`, model traits or connections, the row locks and partitioning the suite exercises (CreateDevice, SyncDeviceSensors, StoreReadings, EvaluateAlarms), tenancy config or bootstrappers, and the tenant route chain. Run it once more at the end of a cycle.
+
+**"I touched a file that has a test in tests/Postgres" is not the criterion.** Formatting, a type hint, a comment, a renamed symbol that is not a stored value — none of them reach the driver. When the default suite covers the behaviour and the driver takes no part in it, it is proven.
 
 In doubt, run the single Postgres file instead of the suite: one file takes seconds.

@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('api')->prefix('in')->group(__DIR__.'/../routes/ingest.php');
         },
     )
+    ->withEvents()
     ->withMiddleware(function (Middleware $middleware): void {
         // Before TrimStrings, so credentials it exempts are not rewritten here,
         // and before ConvertEmptyStringsToNull, so a value left empty converts.

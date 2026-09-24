@@ -2,6 +2,7 @@
 
 namespace App\Actions\Readings;
 
+use App\Events\ReadingsStored;
 use App\Models\Device;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterval;
@@ -48,6 +49,8 @@ class IngestReadings
         }
 
         $stored = $this->storeReadings->handle($accepted);
+
+        ReadingsStored::dispatch($accepted);
 
         return ['stored' => $stored, 'duplicates' => count($accepted) - $stored, 'rejected' => $rejected];
     }

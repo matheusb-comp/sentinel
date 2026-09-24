@@ -1,5 +1,10 @@
 <?php
 
+use App\Actions\Alarms\EvaluateAlarms;
+use App\Actions\Readings\IngestReadings;
+use App\Alarms\AlarmStatus;
+use App\Models\AlarmMonitor;
+use App\Models\AlarmRule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
@@ -132,4 +137,34 @@ it('refuses an archived sensor like one never declared', function () {
         ['index' => 0, 'reason' => 'unknown_key'],
         ['index' => 1, 'reason' => 'unknown_key'],
     ]);
+});
+
+it('moves the monitor of a sensor it stored readings for', function () {
+    ['token' => $token, 'device' => $device] = registerDevice(['temp']);
+    $watch = AlarmMonitor::factory()->create([
+        'alarm_rule_id' => AlarmRule::factory()->create([
+            'company_id' => $device->company_id,
+            'trigger_after' => 0,
+        ])->id,
+        'sensor_id' => $device->sensors()->sole()->id,
+    ]);
+
+    ingest($token, [['key' => 'temp', 'time' => '2026-09-21T11:59:00Z', 'value' => 9.0]])->assertOk();
+
+    expect($watch->refresh()->status)->toBe(AlarmStatus::Alarm);
+});
+
+it('keeps the readings it stored when the evaluation fails', function () {
+    ['device' => $device] = registerDevice(['temp']);
+
+    $this->mock(EvaluateAlarms::class)
+        ->shouldReceive('handle')
+        ->andThrow(new RuntimeException('Break the evaluation.'));
+
+    $ingest = fn () => $device->company->run(fn () => app(IngestReadings::class)->handle($device, [
+        ['key' => 'temp', 'time' => '2026-09-21T11:59:00Z', 'value' => 9.0],
+    ]));
+
+    expect($ingest)->toThrow(RuntimeException::class, 'Break the evaluation.')
+        ->and(DB::table('readings')->count())->toBe(1);
 });

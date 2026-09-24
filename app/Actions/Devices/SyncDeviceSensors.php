@@ -36,6 +36,10 @@ class SyncDeviceSensors
                 $sensor->archived_at = null;
                 // An unchanged sensor is not dirty, so this writes nothing.
                 $sensor->save();
+
+                // So that a key declared twice in the same list is updated the
+                // second time instead of inserted again.
+                $existing[$declared['key']] = $sensor;
             }
 
             // An empty list matches every sensor, so a device that declares
