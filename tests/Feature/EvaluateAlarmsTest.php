@@ -1,10 +1,13 @@
 <?php
 
 use App\Actions\Alarms\EvaluateAlarms;
+use App\Alarms\AlarmDirection;
+use App\Alarms\AlarmEndReason;
 use App\Alarms\AlarmStatus;
 use App\Alarms\AlarmType;
 use App\Events\ReadingsStored;
 use App\Models\AlarmMonitor;
+use App\Models\AlarmPeriod;
 use App\Models\AlarmRule;
 use App\Models\Sensor;
 use Carbon\CarbonImmutable;
@@ -153,4 +156,121 @@ it('evaluates the alarms of a batch the ingestion stored', function () {
     ReadingsStored::dispatch([alarmReading($sensor, '2026-09-23 10:00:00+00', 9.0)]);
 
     expect($watch->refresh()->status)->toBe(AlarmStatus::Alarm);
+});
+
+it('opens a period when the monitor enters alarm', function () {
+    $sensor = Sensor::factory()->create();
+    $watch = watchSensor($sensor, ['trigger_after' => 600]);
+
+    app(EvaluateAlarms::class)->handle([
+        alarmReading($sensor, '2026-09-23 10:00:00+00', 9.0),
+        alarmReading($sensor, '2026-09-23 10:10:00+00', 9.5),
+    ]);
+
+    expect(AlarmPeriod::sole())
+        ->alarm_monitor_id->toBe($watch->id)
+        ->sensor_id->toBe($sensor->id)
+        ->company_id->toBe($sensor->device->company_id)
+        ->breached_at->toIso8601String()->toBe('2026-09-23T10:00:00+00:00')
+        ->started_at->toIso8601String()->toBe('2026-09-23T10:10:00+00:00')
+        ->ended_at->toBeNull()
+        ->value->toBe(9.5);
+});
+
+it('closes the period when the value comes back', function () {
+    $sensor = Sensor::factory()->create();
+    watchSensor($sensor, ['trigger_after' => 600]);
+
+    app(EvaluateAlarms::class)->handle([
+        alarmReading($sensor, '2026-09-23 10:00:00+00', 9.0),
+        alarmReading($sensor, '2026-09-23 10:10:00+00', 9.0),
+        alarmReading($sensor, '2026-09-23 10:12:00+00', 7.0),
+    ]);
+
+    expect(AlarmPeriod::sole())
+        ->ended_at->toIso8601String()->toBe('2026-09-23T10:12:00+00:00')
+        ->ended_reason->toBe(AlarmEndReason::Transition);
+});
+
+it('records one period per excursion of the same batch', function () {
+    $sensor = Sensor::factory()->create();
+    watchSensor($sensor, ['trigger_after' => 0]);
+
+    app(EvaluateAlarms::class)->handle([
+        alarmReading($sensor, '2026-09-23 10:00:00+00', 9.0),
+        alarmReading($sensor, '2026-09-23 10:01:00+00', 7.0),
+        alarmReading($sensor, '2026-09-23 10:02:00+00', 9.0),
+        alarmReading($sensor, '2026-09-23 10:03:00+00', 7.0),
+    ]);
+
+    expect(AlarmPeriod::orderBy('started_at')->pluck('ended_at')->map->toIso8601String()->all())
+        ->toBe(['2026-09-23T10:01:00+00:00', '2026-09-23T10:03:00+00:00']);
+});
+
+it('dates the breach at the confirming reading when the duration is zero', function () {
+    $sensor = Sensor::factory()->create();
+    watchSensor($sensor, ['trigger_after' => 0]);
+
+    app(EvaluateAlarms::class)->handle([alarmReading($sensor, '2026-09-23 10:00:00+00', 9.0)]);
+
+    expect(AlarmPeriod::sole())
+        ->breached_at->toIso8601String()->toBe('2026-09-23T10:00:00+00:00')
+        ->started_at->toIso8601String()->toBe('2026-09-23T10:00:00+00:00');
+});
+
+it('freezes the condition of the rule that judged', function () {
+    $sensor = Sensor::factory()->create();
+    watchSensor($sensor, [
+        'label' => 'Câmara 1',
+        'direction' => AlarmDirection::Low,
+        'threshold' => 2.0,
+        'trigger_after' => 0,
+        'clear_after' => 120,
+    ]);
+
+    app(EvaluateAlarms::class)->handle([alarmReading($sensor, '2026-09-23 10:00:00+00', 1.0)]);
+
+    expect(AlarmPeriod::sole())
+        ->type->toBe(AlarmType::Threshold)
+        ->label->toBe('Câmara 1')
+        ->direction->toBe(AlarmDirection::Low)
+        ->threshold->toBe(2.0)
+        ->trigger_after->toBe(0)
+        ->clear_after->toBe(120);
+});
+
+it('records no period for a monitor that never entered alarm', function () {
+    $sensor = Sensor::factory()->create();
+    $watch = watchSensor($sensor, ['trigger_after' => 0]);
+
+    app(EvaluateAlarms::class)->handle([alarmReading($sensor, '2026-09-23 10:00:00+00', 7.0)]);
+
+    expect($watch->refresh()->status)->toBe(AlarmStatus::Ok)
+        ->and(AlarmPeriod::count())->toBe(0);
+});
+
+it('leaves the monitor of an archived sensor alone', function () {
+    $sensor = Sensor::factory()->create();
+    $watch = watchSensor($sensor, ['trigger_after' => 0]);
+    Sensor::whereKey($sensor->id)->update(['archived_at' => now()]);
+
+    app(EvaluateAlarms::class)->handle([alarmReading($sensor, '2026-09-23 10:00:00+00', 9.0)]);
+
+    expect($watch->refresh()->status)->toBe(AlarmStatus::Waiting)
+        ->and(AlarmPeriod::count())->toBe(0);
+});
+
+it('never closes a period before it started', function () {
+    $sensor = Sensor::factory()->create();
+    watchSensor($sensor, ['trigger_after' => 0]);
+
+    // A device five minutes ahead of us. The cursor is capped at our clock, so
+    // the next reading is older than the period's start and still not filtered.
+    app(EvaluateAlarms::class)->handle([alarmReading($sensor, '2026-09-23 10:20:00+00', 9.0)]);
+    app(EvaluateAlarms::class)->handle([alarmReading($sensor, '2026-09-23 10:16:00+00', 7.0)]);
+
+    $period = AlarmPeriod::sole();
+
+    expect($period->started_at->toIso8601String())->toBe('2026-09-23T10:20:00+00:00')
+        ->and($period->ended_at->toIso8601String())->toBe('2026-09-23T10:20:00+00:00');
 });

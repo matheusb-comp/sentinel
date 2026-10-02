@@ -75,7 +75,8 @@ it('does not query per sensor when the declaration did not change', function () 
 
     app(SyncDeviceSensors::class)->handle($device, $declared);
 
-    // One read of the declared keys, one sweep of the ones left out.
+    // One read of the ones left out, which is empty, and one of the declared
+    // keys. Nothing to archive means nothing else is touched.
     expect(DB::getQueryLog())->toHaveCount(2);
 });
 
